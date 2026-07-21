@@ -9,8 +9,8 @@ export interface PlayerState {
     armor: number; // аналогично 0..150
 
     slot_weapon: ItemState | null; // реализовать перекидывания оружия в этот слот и обратно в инвентарь
-    slot_head: ItemState | null; // надеть и снять
-    slot_body: ItemState | null; // надеть и снять
+    slot_armor: ItemState | null; // надеть и снять
+
     // инвертарь на 8 слотов
     inventory: [
         ItemState | null,

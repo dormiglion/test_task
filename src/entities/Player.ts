@@ -1,5 +1,8 @@
 import type {Position, PlayerState, ItemState, GroundItemState} from '../types/index.js'
 import { BaseItem } from '../items/BaseItem.js';
+import { Gun } from '../items/Gun.js';
+import { Ammo } from '../items/Ammo.js';
+import { createItemInstance } from '../ItemFactory.js';
 
 export class Player {
     public position: Position;
@@ -13,8 +16,7 @@ export class Player {
             health: 100,
             armor: 0,
             slot_weapon: null,
-            slot_head: null,
-            slot_body: null,
+            slot_armor: null,
             inventory: [null, null, null, null, null, null, null, null],
             activeEffects: {}
         };
@@ -58,18 +60,13 @@ export class Player {
     set slot_weapon(value: ItemState | null) {
         this.state.slot_weapon = value;
     }
-    get slot_head(): ItemState | null {
-        return this.state.slot_head;
+    get slot_armor(): ItemState | null {
+        return this.state.slot_armor;
     }
-    set slot_head(value: ItemState | null) {
-        this.state.slot_head = value;
+    set slot_armor(value: ItemState | null) {
+        this.state.slot_armor = value;
     }  
-    get slot_body(): ItemState | null {
-        return this.state.slot_body;
-    }
-    set slot_body(value: ItemState | null) {
-        this.state.slot_body = value;
-    }
+
     // для 8 слотов инвентаря
     get inventory(): PlayerState['inventory'] {
         return this.state.inventory;
@@ -80,6 +77,9 @@ export class Player {
     // для активных эффектов
     get activeEffects(): PlayerState['activeEffects'] {
         return this.state.activeEffects;
+    }
+    set activeEffects(value: PlayerState['activeEffects']){
+        this.state.activeEffects = value;
     }
 
     // МЕТОДЫ
@@ -102,9 +102,12 @@ export class Player {
     // а уже в инвентаре передается только itemCommon, то есть объект с интерфейсом ItemState
     // надо будет добавить для стака
     public pickUpItem(itemGround: GroundItemState): boolean {
-        for (let i = 0; i < this.inventory.length; i++) {
+        for (let i = 0; i < this.inventory.length; i++) { // this.inventory.findIndex(item => item === null) можно делать так
             if (this.inventory[i] === null) {
-                this.inventory[i] = itemGround.itemCommon;
+                // создание класса предмета а не просто itemstate
+                const itemInstance = createItemInstance(itemGround.itemCommon);
+                this.inventory[i] = itemInstance;
+
                 console.log(`Игрок с id ${this.player_id} подобрал предмет ${itemGround.itemCommon.item_type} 
                     с id ${itemGround.itemCommon.item_id} с координат (${itemGround.position.x}, ${itemGround.position.y}).`);
                 return true;
@@ -128,14 +131,77 @@ export class Player {
         console.log(`Игрок с id ${this.player_id} не может выбросить предмет с id ${itemId}, так как он не находится в инвентаре.`);
         return null;
     }
-    // для использования
+    // для использования предметов
     public useItem(itemId: number): boolean {
         for (let i = 0; i < this.inventory.length; i++){
             const currentItem = this.inventory[i];
-            if (currentItem !== null && currentItem !== undefined && currentItem.item_id === itemId) {
-                
+            if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
+                currentItem.use(this);
+                return true;
             }
         }
+        return false;
     }
-    
+
+    // чтобы положить оружие в активный слот, и обратно
+    public equipWeapon(slotIndex: number): void {
+        const item = this.inventory[slotIndex];
+        if (!(item instanceof Gun)) {
+            console.log(`Игрок с id ${this.player_id} не может экипировать предмет с слота ${slotIndex}, так как он не является оружием.`);
+            return;
+        }
+        if (this.slot_weapon === null) {
+            this.slot_weapon = item;
+            this.inventory[slotIndex] = null;
+            console.log(`Игрок с id ${this.player_id} экипировал оружие с id ${item.item_id}.`);
+        } else {
+            const temp = this.slot_weapon;
+            this.slot_weapon = item;
+            this.inventory[slotIndex] = temp;
+            console.log(`Игрок с id ${this.player_id} заменил оружие в слоте на оружие с id ${item.item_id}. 
+                Оружие с id ${temp.item_id} был возвращён в слот инвентаря ${slotIndex}.`);
+        }
+    }
+
+    public unequipWeapon(): void {
+        if (this.slot_weapon === null) {
+            console.log(`Игрок с id ${this.player_id} не может снять оружие, так как слот оружия пуст.`);
+            return;
+        }
+        for (let i = 0; i < this.inventory.length; i++) {
+            if (this.inventory[i] === null) {
+                this.inventory[i] = this.slot_weapon;
+                console.log(`Игрок с id ${this.player_id} снял оружие с id ${this.slot_weapon.item_id} 
+                    и положил его в слот инвентаря ${i}.`);
+                this.slot_weapon = null;
+                return;
+            }
+        }
+        console.log(`Игрок с id ${this.player_id} не может снять оружие c id ${this.slot_weapon.item_id}, 
+            так как инвентарь полон.`);
+    }
+
+    // реализация перезарядки оружия уже в самом игроке
+    public reloadWeapon(): boolean {
+        const gun = this.slot_weapon
+        if (!(gun instanceof Gun)) {
+            console.log(`Игрок с id ${this.player_id} не может перезарядить оружие, так как слот оружия пуст`);
+            return false;
+        }
+
+        for (let i = 0; i < this.inventory.length; i++) {
+            const ammo_in_inventory = this.inventory[i];
+            if (ammo_in_inventory instanceof Ammo) {
+                gun.reload(ammo_in_inventory);
+                if (ammo_in_inventory.isEmpty()) {
+                    this.inventory[i] = null;
+                    console.log(`Коробка с патронами с id ${ammo_in_inventory.item_id} была удалена из инвентаря, так как она пуста.`);
+                }
+                return true;
+            }
+        }
+        console.log(`Игрок с id ${this.player_id} не может перезарядить оружие с id ${gun.item_id}, 
+            так как в инвентаре нет патронов.`);
+        return false;
+    }
 }
