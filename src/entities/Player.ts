@@ -1,4 +1,5 @@
 import type {Position, PlayerState, ItemState, GroundItemState} from '../types/index.js'
+import { BaseItem } from '../items/BaseItem.js';
 
 export class Player {
     public position: Position;
@@ -42,21 +43,13 @@ export class Player {
         return this.state.health;
     }
     set health(value: number) {
-        if (value < 0) {
-            this.state.health = 0;
-        } else {
-            this.state.health = value;
-        }
+        this.state.health = Math.min(100, Math.max(0, value));
     }
     get armor(): number {
         return this.state.armor;
     }
     set armor(value: number) {
-        if (value < 0) {
-            this.state.armor = 0;
-        } else {
-            this.state.armor = value;
-        }
+        this.state.armor = Math.min(150, Math.max(0, value));
     }
     // для слотов брони и оружия 
     get slot_weapon(): ItemState | null {
@@ -144,4 +137,5 @@ export class Player {
             }
         }
     }
+    
 }
