@@ -39,5 +39,12 @@ export class Ammo extends BaseItem {
     public isEmpty(): boolean {
         return this.ammo_cnt <= 0;
     }
+
+    public getState(): ItemState & { ammo_cnt: number } { 
+        return {
+            ...super.getState(),
+            ammo_cnt: this.ammo_cnt
+        }
+    }    
 }
 registerItemType('ammo', Ammo);

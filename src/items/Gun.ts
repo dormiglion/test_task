@@ -40,13 +40,16 @@ export class Gun extends BaseItem {
     }
 
     public use(player: Player): void {
-        if (this.current_ammo > 0){
-            this.current_ammo--;
-            console.log(`Выстрел сделан`);
+        if (player.slot_weapon === this){
+            if (this.current_ammo > 0){
+                this.current_ammo--;
+                console.log(`Выстрел сделан. Осталось патронов ${this.current_ammo}.`);
+            } else {
+                console.log(`Патронов нет, перезарядитесь`);
+            }
         } else {
-            console.log(`Патронов нет, перезарядитесь`);
+            console.log(`Пистолет лежит в рюкзаке! Сначала возьмите его в руки (экипируйте).`);
         }
-        
     }
     public reload(ammo: Ammo): void {
         const needed_to_reload = this.max_ammo - this.current_ammo;
@@ -61,5 +64,13 @@ export class Gun extends BaseItem {
                 В коробке с патронами осталось ${ammo.ammo_cnt}`);
         }
     }
+
+    public getState(): ItemState & { current_ammo : number, max_ammo: number } { 
+        return {
+            ...super.getState(),
+            current_ammo: this.current_ammo,
+            max_ammo: this.max_ammo
+        }
+    } 
 }
 registerItemType('gun', Gun);

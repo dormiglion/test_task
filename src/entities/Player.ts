@@ -122,10 +122,11 @@ export class Player {
     public dropItem(itemId: number): ItemState | null {
         for (let i = 0; i < this.inventory.length; i++) {
             const currentItem = this.inventory[i];
-            if (currentItem !== null && currentItem !== undefined && currentItem.item_id === itemId) {
+            if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
+                const itemStateData = currentItem.getState(); // чтобы у нас на земле валялся стейт
                 this.inventory[i] = null;
                 console.log(`Игрок с id ${this.player_id} выбросил предмет ${currentItem.item_type} с id ${currentItem.item_id}.`);
-                return currentItem;
+                return itemStateData;
             }
         }
         console.log(`Игрок с id ${this.player_id} не может выбросить предмет с id ${itemId}, так как он не находится в инвентаре.`);
@@ -143,10 +144,23 @@ export class Player {
         return false;
     }
 
+    // для атаки
+    // если добавлять ножи и тд то надо будет поменять equipWeapon
+    // создать промежуточный класс Weapon, от него уже наследуется все оружие и тогда --> [1]
+    public useWeapon(): boolean {
+        if (this.slot_weapon instanceof BaseItem) {
+            this.slot_weapon.use(this);
+            return true;
+        } else {
+            console.log(`Игрок с id ${this.player_id} пытается атаковать, но в руках нет оружия.`);
+            return false;
+        }
+    }
+
     // чтобы положить оружие в активный слот, и обратно
     public equipWeapon(slotIndex: number): void {
         const item = this.inventory[slotIndex];
-        if (!(item instanceof Gun)) {
+        if (!(item instanceof Gun)) { // --> [1] вот тут проверять не на Gun а на Weapon
             console.log(`Игрок с id ${this.player_id} не может экипировать предмет с слота ${slotIndex}, так как он не является оружием.`);
             return;
         }

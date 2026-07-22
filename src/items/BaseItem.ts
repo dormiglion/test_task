@@ -12,4 +12,13 @@ export abstract class BaseItem implements ItemState {
         this.amount = state.amount;
     }
     public abstract use(player: Player): void; // метод использования предмета чтобы дальше его к классу player
+
+    public getState(): ItemState { // для того чтобы вытащить из объекта класаа сырые данные
+        return {
+            item_id: this.item_id,
+            item_type: this.item_type,
+            amount: this.amount
+        };
+    }
 }
+

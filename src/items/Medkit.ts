@@ -25,5 +25,10 @@ export class Medkit extends BaseItem {
         player.health += 25;
         console.log(`Игрок ${player.player_id} использовал аптечку. Здоровье: ${player.health}`)
     }
+    public getState(): ItemState { // Spread  синтаксис в JavaScript, который позволяет разобрать массив или объект на отдельные элементы.
+        return {
+            ...super.getState()
+        }
+    }
 }
 registerItemType('medkit', Medkit)
