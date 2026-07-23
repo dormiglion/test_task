@@ -4,21 +4,6 @@ import type { InventoryStorage } from "../Storage/InventoryStorage.js";
 import type { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
 
-const defaultConfig: GameConfig = { // концфиг - локальная константа СПРОСИТЬ ТОЧНО ЛИ ТУТ ВАЩЕ МОЖНО ЕГО ДЕЛАТЬ
-    maxHealth: 100,
-    maxArmor: 150,
-    medkit_healing: 25,
-    bandage_healing: 10,
-    mapBounds: { maxX: 50, maxY: 50 },
-    pickupRadius: 2,
-    itemLifetimeTicks: 1,
-    validItemTypes: [
-        'ammo', 
-        'armor',
-        'gun',
-        'medkit', 
-    ]
-}
 
 export class GameWorld {
     public players: Map<number, Player>;
@@ -59,7 +44,7 @@ export class GameWorld {
             console.log(`Игрока с таким id в системе не существует`);
             return false;
         }
-        if (amount <= 0) {
+        if (amount <= 0 || !Number.isInteger(amount)) {
             console.log(`Невозможно выдать неверное количество предметов: ${amount}`);
             return false;
         }

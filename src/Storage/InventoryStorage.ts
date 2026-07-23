@@ -58,7 +58,14 @@ export class InventoryStorage {
         return groundItemState.itemCommon;
 
     }
-    public async getAllGroundItems(): Promise<GroundItemState[]> {
+
+    public async getGroundItem(item_id: number): Promise<GroundItemState | null> { // чтобы посмотреть предмет на земле
+        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        const groundItemState = this.groundItemsMap.get(item_id);
+        return groundItemState || null;
+    }
+
+    public async getAllGroundItems(): Promise<GroundItemState[]> { // чтобы посмотреть все предметы на земле
         await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
         return Array.from(this.groundItemsMap.values())
     }
