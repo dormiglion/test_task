@@ -39,3 +39,12 @@ export interface GroundItemState {
     creation_tick: number;
     duration_ticks: number;
 }
+export interface GameConfig { // чтобы сделать все эти значения конфигурируемыми
+    maxHealth: number;
+    maxArmor: number;
+    medkit_healing: number;
+    bandage_healing: number;
+    mapBounds: { maxX: number; maxY: number };
+    pickupRadius: number; 
+    itemLifetimeTicks: number; 
+}

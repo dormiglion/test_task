@@ -1,6 +1,6 @@
 import { BaseItem } from "./BaseItem.js";
 import type {Player} from '../entities/Player.js';
-import type { ItemState } from "../types/index.js";
+import type { GameConfig, ItemState } from "../types/index.js";
 import { registerItemType } from "../ItemFactory.js";
 
 export class Medkit extends BaseItem {
@@ -21,8 +21,8 @@ export class Medkit extends BaseItem {
         }
     }
 
-    public use(player: Player): void {
-        player.health += 25;
+    public use(player: Player, config: GameConfig): void {
+        player.health += config.medkit_healing;
         console.log(`Игрок ${player.player_id} использовал аптечку. Здоровье: ${player.health}`)
     }
     public getState(): ItemState { // Spread  синтаксис в JavaScript, который позволяет разобрать массив или объект на отдельные элементы.

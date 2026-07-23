@@ -2,7 +2,7 @@ import { BaseItem } from "./BaseItem.js";
 import {Ammo} from "./Ammo.js";
 import type { Player } from "../entities/Player.js";
 import { registerItemType } from '../ItemFactory.js';
-import type { ItemState } from "../types/index.js";
+import type { ItemState, GameConfig } from "../types/index.js";
 
 
 export class Gun extends BaseItem {
@@ -39,7 +39,7 @@ export class Gun extends BaseItem {
         }
     }
 
-    public use(player: Player): void {
+    public use(player: Player, config: GameConfig): void {
         if (player.slot_weapon === this){
             if (this.current_ammo > 0){
                 this.current_ammo--;
@@ -48,7 +48,7 @@ export class Gun extends BaseItem {
                 console.log(`Патронов нет, перезарядитесь`);
             }
         } else {
-            console.log(`Пистолет лежит в рюкзаке! Сначала возьмите его в руки (экипируйте).`);
+            console.log(`Пистолет лежит в рюкзаке! Сначала возьмите его нужно экипировать.`);
         }
     }
     public reload(ammo: Ammo): void {

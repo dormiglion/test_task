@@ -1,4 +1,4 @@
-import type {ItemState} from '../types/index.js' 
+import type {ItemState, GameConfig} from '../types/index.js' 
 import type {Player} from '../entities/Player.js'
 
 export abstract class BaseItem implements ItemState {
@@ -11,7 +11,7 @@ export abstract class BaseItem implements ItemState {
         this.item_type = state.item_type;
         this.amount = state.amount;
     }
-    public abstract use(player: Player): void; // метод использования предмета чтобы дальше его к классу player
+    public abstract use(player: Player, config: GameConfig): void; // метод использования предмета чтобы дальше его к классу player
 
     public getState(): ItemState { // для того чтобы вытащить из объекта класаа сырые данные
         return {

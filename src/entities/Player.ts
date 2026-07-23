@@ -1,19 +1,23 @@
-import type {Position, PlayerState, ItemState, GroundItemState} from '../types/index.js'
+import type {Position, PlayerState, ItemState, GroundItemState, GameConfig} from '../types/index.js'
 import { BaseItem } from '../items/BaseItem.js';
 import { Gun } from '../items/Gun.js';
 import { Ammo } from '../items/Ammo.js';
+import { Armor } from '../items/Armor.js';
 import { createItemInstance } from '../ItemFactory.js';
+import { InventoryStorage } from '../Storage/InventoryStorage.js';
 
 export class Player {
     public position: Position;
     public state: PlayerState;
+    private config: GameConfig;
 
     // конструктор игрока
-    constructor(player_id: number, start_x: number, start_y: number) {
+    constructor(player_id: number, start_x: number, start_y: number, config: GameConfig) {
+        this.config = config;
         this.position = {x: start_x, y: start_y};
         this.state = {
             player_id: player_id,
-            health: 100,
+            health: this.config.maxHealth,
             armor: 0,
             slot_weapon: null,
             slot_armor: null,
@@ -45,13 +49,13 @@ export class Player {
         return this.state.health;
     }
     set health(value: number) {
-        this.state.health = Math.min(100, Math.max(0, value));
+        this.state.health = Math.min(this.config.maxHealth, Math.max(0, value));
     }
     get armor(): number {
         return this.state.armor;
     }
     set armor(value: number) {
-        this.state.armor = Math.min(150, Math.max(0, value));
+        this.state.armor = Math.min(this.config.maxArmor, Math.max(0, value));
     }
     // для слотов брони и оружия 
     get slot_weapon(): ItemState | null {
@@ -85,7 +89,7 @@ export class Player {
     // МЕТОДЫ
 
     public moveTo(new_x: number, new_y: number): boolean {
-        if (new_x < 0 || new_y < 0 || new_x > 50 || new_y > 50 || !Number.isInteger(new_x) || !Number.isInteger(new_y)) {
+        if (new_x < 0 || new_y < 0 || new_x > this.config.mapBounds.maxX || new_y > this.config.mapBounds.maxY || !Number.isInteger(new_x) || !Number.isInteger(new_y)) {
             console.log(`Игрок с id ${this.player_id} не может переместиться на 
                 координаты (${new_x}, ${new_y}) так как это выходит за границы 
                 карты, или же введённые значения не являются целыми числами.\n
@@ -101,32 +105,45 @@ export class Player {
     // пикап метод, передается объект GroundItemState, чтобы принять еще и координаты
     // а уже в инвентаре передается только itemCommon, то есть объект с интерфейсом ItemState
     // надо будет добавить для стака
-    public pickUpItem(itemGround: GroundItemState): boolean {
-        for (let i = 0; i < this.inventory.length; i++) { // this.inventory.findIndex(item => item === null) можно делать так
-            if (this.inventory[i] === null) {
-                // создание класса предмета а не просто itemstate
-                const itemInstance = createItemInstance(itemGround.itemCommon);
-                this.inventory[i] = itemInstance;
-
-                console.log(`Игрок с id ${this.player_id} подобрал предмет ${itemGround.itemCommon.item_type} 
-                    с id ${itemGround.itemCommon.item_id} с координат (${itemGround.position.x}, ${itemGround.position.y}).`);
-                return true;
+    public async pickUpItem(item_id: number, storage: InventoryStorage): Promise<boolean> {
+        const emptySlotIndex = this.inventory.findIndex(item => item === null);
+        
+        if (emptySlotIndex === -1) {
+            console.log(`Игрок с id ${this.player_id} не может поднять предмет, так как инвентарь полон.`);
+            return false; // чтобы не стирать предмет с земли зря
             }
-        }
-        console.log(`Игрок с id ${this.player_id} не может поднять предмет ${itemGround.itemCommon.item_type} 
-            с id ${itemGround.itemCommon.item_id} с координат (${itemGround.position.x}, ${itemGround.position.y}), 
-            так как инвентарь полон.`);
-        return false;
+        // пытаемся забрать предмет с земли через storage всех предметов на земле
+        const itemData = await storage.removeFromGround(item_id);
+        // чтобы не дюп
+        if (!itemData) {
+            console.log(`Игрок с id ${this.player_id} не смог поднять предмет с id ${item_id} (предмет исчез или его забрал другой).`);
+            return false;
+            }
+        const itemInstance = createItemInstance(itemData);
+        this.inventory[emptySlotIndex] = itemInstance;
+
+        console.log(`Игрок с id ${this.player_id} подобрал предмет ${itemData.item_type} с id ${itemData.item_id}.`);
+        return true;
     }
+
     // дроп, надо будет менять для стаковых предметов
-    public dropItem(itemId: number): ItemState | null {
+    public async dropItem(itemId: number, storage: InventoryStorage): Promise<GroundItemState | null> {
         for (let i = 0; i < this.inventory.length; i++) {
             const currentItem = this.inventory[i];
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
                 const itemStateData = currentItem.getState(); // чтобы у нас на земле валялся стейт
                 this.inventory[i] = null;
-                console.log(`Игрок с id ${this.player_id} выбросил предмет ${currentItem.item_type} с id ${currentItem.item_id}.`);
-                return itemStateData;
+
+                const groundItemData: GroundItemState = {
+                creation_tick: 1,
+                duration_ticks: this.config.itemLifetimeTicks,
+                position: { x: this.x, y: this.y }, // Координаты игрока!
+                itemCommon: itemStateData
+                };
+                await storage.addToGround(groundItemData);
+
+                console.log(`Игрок с id ${this.player_id} выбросил предмет ${currentItem.item_type} с id ${currentItem.item_id} на координаты я (${this.x}, ${this.y})`);
+                return groundItemData;
             }
         }
         console.log(`Игрок с id ${this.player_id} не может выбросить предмет с id ${itemId}, так как он не находится в инвентаре.`);
@@ -137,10 +154,11 @@ export class Player {
         for (let i = 0; i < this.inventory.length; i++){
             const currentItem = this.inventory[i];
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
-                currentItem.use(this);
+                currentItem.use(this, this.config);
                 return true;
             }
         }
+        console.log(`Действие не выполнено, так как предмет с id ${itemId} не найден в инвентаре у игрока с id ${this.player_id}`)
         return false;
     }
 
@@ -149,7 +167,7 @@ export class Player {
     // создать промежуточный класс Weapon, от него уже наследуется все оружие и тогда --> [1]
     public useWeapon(): boolean {
         if (this.slot_weapon instanceof BaseItem) {
-            this.slot_weapon.use(this);
+            this.slot_weapon.use(this, this.config);
             return true;
         } else {
             console.log(`Игрок с id ${this.player_id} пытается атаковать, но в руках нет оружия.`);
@@ -217,5 +235,44 @@ export class Player {
         console.log(`Игрок с id ${this.player_id} не может перезарядить оружие с id ${gun.item_id}, 
             так как в инвентаре нет патронов.`);
         return false;
+    }
+
+    public toggleArmor(armorObj: Armor): void {
+        if (this.slot_armor === armorObj) { // если броня уже надета то снимаем
+            const emptySlotIndex = this.inventory.findIndex(item => item === null);
+            if (emptySlotIndex === -1) {
+                console.log(`Игрок с id ${this.player_id} не может снять броню, так как инвентарь полон. Сначала освободите место.`);
+                return;
+            }
+            this.inventory[emptySlotIndex] = armorObj;
+            this.slot_armor = null;
+            this.armor -= armorObj.current_armor;
+            console.log(`Игрок снял броню с id ${armorObj.item_id} и положил её в слот инвентаря ${emptySlotIndex}. 
+                Текущая броня игрока: ${this.armor}`);
+            return;
+        }
+        const slotIndex = this.inventory.indexOf(armorObj);
+        if (slotIndex !== -1) {
+            const oldArmor = this.slot_armor;
+
+            if (oldArmor instanceof Armor) {
+                this.inventory[slotIndex] = oldArmor;
+                this.slot_armor = armorObj;
+
+                this.armor -= oldArmor.current_armor;
+                this.armor += armorObj.current_armor;
+
+                console.log(`Игрок заменил броню с id ${oldArmor.item_id} на броню с id ${armorObj.item_id}. 
+                    Текущая броня игрока: ${this.armor}`);
+            } else {
+                this.inventory[slotIndex] = null; // если слот активной брони был пуст 
+                this.slot_armor = armorObj;           
+
+                this.armor += armorObj.current_armor;
+                console.log(`Игрок экипировал броню с id ${armorObj.item_id}. Текущая броня игрока: ${this.armor}`);
+            }
+        } else {
+            console.log(`Ошибка: эта броня не найдена ни на игроке, ни в инвентаре.`);
+        }
     }
 }

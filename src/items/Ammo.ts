@@ -1,7 +1,7 @@
 import { BaseItem } from "./BaseItem.js";
 import type { Player } from "../entities/Player.js";
 import { registerItemType } from "../ItemFactory.js"
-import type { ItemState } from "../types/index.js";
+import type { ItemState, GameConfig } from "../types/index.js";
 
 export class Ammo extends BaseItem {
     public ammo_cnt: number;
@@ -31,7 +31,7 @@ export class Ammo extends BaseItem {
         }
     }
 
-    public use(player: Player): void {
+    public use(player: Player, config: GameConfig): void {
         console.log(`Необходимо выбрать какое оружие нужно перезарядить и применить ему метод reload. 
             Просто так использовать пули невозможно`)
     }
