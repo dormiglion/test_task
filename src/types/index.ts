@@ -46,5 +46,7 @@ export interface GameConfig { // чтобы сделать все эти зна�
     bandage_healing: number;
     mapBounds: { maxX: number; maxY: number };
     pickupRadius: number; 
-    itemLifetimeTicks: number; 
+    itemLifetimeTicks: number;
+    
+    validItemTypes: string[];
 }
