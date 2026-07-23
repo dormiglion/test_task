@@ -13,7 +13,16 @@ export class InventoryStorage {
         await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
         this.playerItemsMap.set(player_id, dataPlayerInventory);
         console.log(`Инвентарь игрока с id ${player_id} успешно сохранён в БД`);
-
+    }
+    public async deleteDataPlayersItem(player_id: number): Promise<boolean> { // для удаления игрока насовсем, вызывается через ядро
+        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        if (!this.playerItemsMap.has(player_id)) {
+        console.log(`В БД нет данных об игроке ${player_id}.`);
+        return false;
+    }
+    this.playerItemsMap.delete(player_id);
+    console.log(`Данные игрока ${player_id} навсегда удалены из БД.`);
+    return true;
     }
 
     public async getInventory(player_id: number): Promise<{

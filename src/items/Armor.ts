@@ -66,8 +66,9 @@ export class Armor extends BaseItem{
     //     }
     // }
 
-    public use (player: Player, config: GameConfig): void {
+    public use (player: Player, config: GameConfig): boolean {
         player.toggleArmor(this);
+        return false;
     }
 
     public getState(): ItemState & { current_armor: number } { 

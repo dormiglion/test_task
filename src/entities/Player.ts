@@ -6,6 +6,10 @@ import { Armor } from '../items/Armor.js';
 import { createItemInstance } from '../ItemFactory.js';
 import { InventoryStorage } from '../Storage/InventoryStorage.js';
 
+type PickUpResult = {
+    success: boolean;
+    leftover: BaseItem | null;
+};
 export class Player {
     public position: Position;
     public state: PlayerState;
@@ -104,46 +108,70 @@ export class Player {
     }
     // пикап метод, передается объект GroundItemState, чтобы принять еще и координаты
     // а уже в инвентаре передается только itemCommon, то есть объект с интерфейсом ItemState
-    // надо будет добавить для стака
-    public async pickUpItem(item_id: number, storage: InventoryStorage): Promise<boolean> {
-        const emptySlotIndex = this.inventory.findIndex(item => item === null);
-        
-        if (emptySlotIndex === -1) {
-            console.log(`Игрок с id ${this.player_id} не может поднять предмет, так как инвентарь полон.`);
-            return false; // чтобы не стирать предмет с земли зря
+    // 
+    public tryAddItem(itemInstance: BaseItem): PickUpResult {
+        let addedSomething = false;
+        for (let i = 0; i < this.inventory.length; i++) {
+            const slot = this.inventory[i];
+            
+            // если в слоте такой же предмет и стак не полный
+            if (slot instanceof BaseItem && slot.item_type === itemInstance.item_type && slot.amount < slot.max_stack) {
+                const spaceLeft = slot.max_stack - slot.amount;
+                
+                if (itemInstance.amount <= spaceLeft) {
+                    // влезает и подбираем предмет
+                    slot.amount += itemInstance.amount;
+                    addedSomething = true;
+                    console.log(`Игрок ${this.player_id} добавил ${itemInstance.item_type} в существующий стак. Теперь их ${slot.amount}.`);
+                    return {success: true, leftover: null};
+                } else {
+                    // стак полный, но остался излишек 
+                    slot.amount += spaceLeft;
+                    itemInstance.amount -= spaceLeft;
+                    addedSomething = true;
+                    console.log(`Стак ${slot.item_type} заполнен. Ищем место для остатка (${itemInstance.amount} шт).`);
+                }
             }
-        // пытаемся забрать предмет с земли через storage всех предметов на земле
-        const itemData = await storage.removeFromGround(item_id);
-        // чтобы не дюп
-        if (!itemData) {
-            console.log(`Игрок с id ${this.player_id} не смог поднять предмет с id ${item_id} (предмет исчез или его забрал другой).`);
-            return false;
+        }
+        // если остался предмет не стакающийся или остаток, нужен пустой слот
+        if (itemInstance.amount > 0) {
+            const emptySlotIndex = this.inventory.findIndex(item => item === null);
+            
+            if (emptySlotIndex !== -1) {
+                this.inventory[emptySlotIndex] = itemInstance;
+                addedSomething = true;
+                console.log(`Игрок ${this.player_id} положил ${itemInstance.item_type} в пустой слот ${emptySlotIndex}.`);
+                return {success: true, leftover: null};
+            } else {
+                console.log(`Инвентарь полон! Предмет или остаток ${itemInstance.item_type} (${itemInstance.amount} шт) выпадает обратно на землю.`);
+                return {success: addedSomething, leftover: itemInstance};
             }
-        const itemInstance = createItemInstance(itemData);
-        this.inventory[emptySlotIndex] = itemInstance;
-
-        console.log(`Игрок с id ${this.player_id} подобрал предмет ${itemData.item_type} с id ${itemData.item_id}.`);
-        return true;
+        }
+        return {success: addedSomething, leftover: null};;
     }
-
-    // дроп, надо будет менять для стаковых предметов
-    public async dropItem(itemId: number, storage: InventoryStorage): Promise<GroundItemState | null> {
+    // дроп метод, передается объект ItemState, а уже в геймворлде добавляются тики и айди
+    public dropItem(itemId: number): ItemState | null {
         for (let i = 0; i < this.inventory.length; i++) {
             const currentItem = this.inventory[i];
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
-                const itemStateData = currentItem.getState(); // чтобы у нас на земле валялся стейт
-                this.inventory[i] = null;
-
-                const groundItemData: GroundItemState = {
-                creation_tick: 1,
-                duration_ticks: this.config.itemLifetimeTicks,
-                position: { x: this.x, y: this.y }, // Координаты игрока!
-                itemCommon: itemStateData
+                // предмет стакается и его больше 1 штуки то минцс одна штука
+                const dropAmount = (currentItem.max_stack > 1 && currentItem.amount > 1) ? 1 : currentItem.amount;
+                const itemState = currentItem.getState();
+                
+                // Создаем стейт для падающего предмета с нужным количеством
+                const droppedItemState: ItemState = {
+                    ...itemState,
+                    amount: dropAmount
                 };
-                await storage.addToGround(groundItemData);
 
-                console.log(`Игрок с id ${this.player_id} выбросил предмет ${currentItem.item_type} с id ${currentItem.item_id} на координаты я (${this.x}, ${this.y})`);
-                return groundItemData;
+                // Уменьшаем количество в инвентаре или очищаем слот, если ничего не осталось
+                if (currentItem.max_stack > 1 && currentItem.amount > 1) {
+                    currentItem.amount -= dropAmount;
+                } else {
+                    this.inventory[i] = null;
+                }
+
+                return droppedItemState;
             }
         }
         console.log(`Игрок с id ${this.player_id} не может выбросить предмет с id ${itemId}, так как он не находится в инвентаре.`);
@@ -154,7 +182,11 @@ export class Player {
         for (let i = 0; i < this.inventory.length; i++){
             const currentItem = this.inventory[i];
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
-                currentItem.use(this, this.config);
+                const isConsumed = currentItem.use(this, this.config);
+                if (isConsumed) {
+                    this.inventory[i] = null; // удаление той же аптечки
+                    console.log(`Предмет с id ${itemId} был израсходован и удален из инвентаря.`);
+                }
                 return true;
             }
         }

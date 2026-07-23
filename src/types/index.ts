@@ -28,7 +28,7 @@ export interface PlayerState {
 }
 
 export interface ItemState {
-    readonly item_id: number;
+    item_id: number;
     readonly item_type: string;
     amount: number;
     // current_ammo?: number; // для оружия

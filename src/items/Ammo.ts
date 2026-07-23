@@ -31,9 +31,10 @@ export class Ammo extends BaseItem {
         }
     }
 
-    public use(player: Player, config: GameConfig): void {
+    public use(player: Player, config: GameConfig): boolean {
         console.log(`Необходимо выбрать какое оружие нужно перезарядить и применить ему метод reload. 
-            Просто так использовать пули невозможно`)
+            Просто так использовать пули невозможно`);
+        return false
     }
     // метод для удаления из инветаря, когда пули заканчиваются в коробке
     public isEmpty(): boolean {

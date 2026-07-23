@@ -39,7 +39,7 @@ export class Gun extends BaseItem {
         }
     }
 
-    public use(player: Player, config: GameConfig): void {
+    public use(player: Player, config: GameConfig): boolean {
         if (player.slot_weapon === this){
             if (this.current_ammo > 0){
                 this.current_ammo--;
@@ -50,8 +50,9 @@ export class Gun extends BaseItem {
         } else {
             console.log(`Пистолет лежит в рюкзаке! Сначала возьмите его нужно экипировать.`);
         }
+        return false; 
     }
-    public reload(ammo: Ammo): void {
+    public reload(ammo: Ammo): boolean {
         const needed_to_reload = this.max_ammo - this.current_ammo;
         const take_from_ammo_box = Math.min(needed_to_reload, ammo.ammo_cnt);
         this.current_ammo += take_from_ammo_box;
@@ -63,6 +64,7 @@ export class Gun extends BaseItem {
             console.log(`Перезарядка сделана. В пистолете сейчас ${this.current_ammo} патронов. 
                 В коробке с патронами осталось ${ammo.ammo_cnt}`);
         }
+        return ammo.isEmpty();
     }
 
     public getState(): ItemState & { current_ammo : number, max_ammo: number } { 
