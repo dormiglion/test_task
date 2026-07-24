@@ -6,6 +6,7 @@ import { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
 
 
+
 export class GameWorld {
     public players: Map<number, Player>;
     public storage: InventoryStorage;
@@ -42,6 +43,24 @@ export class GameWorld {
             slot_weapon: player.slot_weapon,
             slot_armor: player.slot_armor
         });
+    }
+
+    public async tick(): Promise<void> {
+        this.currentTick++;
+        console.log(`--- Тик ${this.currentTick} ---`);
+        console.log(`Будут удалены предметы на замле с закончившимся временем жизни`)
+        await this.removeExpiredGroundItems();
+    }
+
+    // для удаления по тику
+    private async removeExpiredGroundItems(): Promise<void> {
+        const allGroundItems = await this.storage.getAllGroundItems();
+        for (const item of allGroundItems){
+            if (this.currentTick >= item.creation_tick + item.duration_ticks){
+                await this.storage.removeFromGround(item.itemCommon.item_id);
+                console.log(`Предмет ${item.itemCommon.item_id} исчез с земли (истекло время жизни).`);
+            }
+        }
     }
 
     // МЕТОДЫ
