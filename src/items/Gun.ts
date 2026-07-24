@@ -44,6 +44,7 @@ export class Gun extends BaseItem {
             if (this.current_ammo > 0){
                 this.current_ammo--;
                 console.log(`Выстрел сделан. Осталось патронов ${this.current_ammo}.`);
+                return true;
             } else {
                 console.log(`Патронов нет, перезарядитесь`);
             }

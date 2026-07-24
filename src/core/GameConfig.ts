@@ -7,7 +7,7 @@ export const defaultConfig: GameConfig = {
     bandage_healing: 10,
     mapBounds: { maxX: 50, maxY: 50 },
     pickupRadius: 2,
-    itemLifetimeTicks: 1,
+    itemLifetimeTicks: 10,
     validItemTypes: [
         'ammo', 
         'armor',

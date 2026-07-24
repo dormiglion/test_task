@@ -1,7 +1,8 @@
 import type { GameConfig, ItemState, GroundItemState } from "../types/index.js";
 import { Player } from "../entities/Player.js";
 import type { InventoryStorage } from "../Storage/InventoryStorage.js";
-import type { BaseItem } from "../items/BaseItem.js";
+// import type { BaseItem } from "../items/BaseItem.js";
+import { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
 
 
@@ -9,7 +10,8 @@ export class GameWorld {
     public players: Map<number, Player>;
     public storage: InventoryStorage;
     public config : GameConfig;
-    private nextItemId: number = 1;
+    private nextItemId: number = 1; // для выдачи предметам ID
+    private currentTick = 0; //тики
 
     constructor(storage: InventoryStorage, config: GameConfig) {
         this.storage = storage;
@@ -24,6 +26,22 @@ export class GameWorld {
             return undefined
         }
         return player;
+    }
+    public getInventory(playerId: number): (ItemState | null)[] {
+        const player = this.getPlayer(playerId);
+
+        if (!player) {
+            return [];
+        }
+        return player.inventory.map(item => item instanceof BaseItem ? item.getState() : null); // true false
+    }
+
+    private async savePlayerInventory(player: Player): Promise<void> { // метод для сохранения в инвентарь
+        await this.storage.saveInventory(player.player_id, {
+            inventory: player.inventory,
+            slot_weapon: player.slot_weapon,
+            slot_armor: player.slot_armor
+        });
     }
 
     // МЕТОДЫ
@@ -79,6 +97,16 @@ export class GameWorld {
         }
         return true;
     }
+    // передвижение по карте
+    public movePlayerTo(playerId: number, new_x: number, new_y: number,): boolean {
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+        const success = player.moveTo(new_x, new_y);
+        return success;
+    }
 
     public async giveItem(player_id: number, item_type: string, amount: number = 1): Promise<boolean> { // выдача предмета в режиме бога
         const player = this.getPlayer(player_id);
@@ -109,11 +137,7 @@ export class GameWorld {
         })
         player.inventory[emptySlotIndex] = newItem;
 
-        await this.storage.saveInventory(player_id, { // для асинхронности. после добавления любого предмета надо сохранить инфу об этом
-        inventory: player.inventory,
-        slot_weapon: player.slot_weapon,
-        slot_armor: player.slot_armor
-    });
+        await this.savePlayerInventory(player); // для асинхронности. после добавления любого предмета надо сохранить инфу об этом
         console.log(`Игроку с id ${player_id} успешно выдан предмет ${item_type} (id: ${itemId}, кол-во: ${amount})`);
         return true;
     }
@@ -156,11 +180,7 @@ export class GameWorld {
             await this.storage.addToGround(groundItemState);
         }
         if (pickupResult.success) {
-            await this.storage.saveInventory(player_id, {
-            inventory: player.inventory,
-            slot_weapon: player.slot_weapon,
-            slot_armor: player.slot_armor
-            });
+            await this.savePlayerInventory(player);;
         }
         return pickupResult.success;
     }
@@ -186,29 +206,87 @@ export class GameWorld {
         };
         await this.storage.addToGround(groundItemData);
 
-        await this.storage.saveInventory(player_id, {
-        inventory: player.inventory,
-        slot_weapon: player.slot_weapon,
-        slot_armor: player.slot_armor
-        });
+        await this.savePlayerInventory(player);
         console.log(`Игрок с id ${player_id} выбросил предмет ${droppedItemState.item_type} (новый id на земле: ${newGroundItemId}, кол-во: ${droppedItemState.amount}) на координаты (${player.x}, ${player.y}).`);
         return true;
     }
 
-    public useItem(playerId: number, itemId: number): boolean {
+    public async useItem(playerId: number, itemId: number): Promise<boolean> {
         const player = this.players.get(playerId);
         if (!player) {
-            console.log(`Ошибка: Игрок с id ${playerId} не найден.`);
+            console.log(`Игрока с id ${playerId} в системе не существует`);
             return false;
         }
 
         const success = player.useItem(itemId);
 
         if (success) {
+            await this.savePlayerInventory(player);
             console.log(`Игрок ${playerId} успешно активировал предмет ${itemId}.`);
         }
         return success;
     }
+
+    public async useWeapon(playerId: number): Promise<boolean> { //использовать оружие в активном слоте
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+        const success = player.useWeapon();
+
+        if (success) {
+            await this.savePlayerInventory(player);
+        }
+        return success;
+    }
+
+    public async reloadWeapon(playerId: number): Promise<boolean> { // чтобы перезарядить оружие в активном слоте
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+        const success = player.reloadWeapon();
+        if (success) {
+            await this.savePlayerInventory(player);
+        }
+        return success;
+    }
+
+    public async equipWeapon(playerId: number, slotIndex: number): Promise<boolean> { // переложить оружие в активный слот
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+        const success = player.equipWeapon(slotIndex);
+
+        if (success) {
+            await this.savePlayerInventory(player);
+        }
+        return success;
+    }
+    
+    public async unequipWeapon(playerId: number): Promise<boolean> { // переложить оружие из активного слота обратно
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+
+        const success = player.unequipWeapon();
+
+        if (success) {
+            await this.savePlayerInventory(player);
+        }
+
+        return success;
+    }
+
+
+
+
 }
 
 

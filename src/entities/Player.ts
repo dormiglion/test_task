@@ -97,7 +97,7 @@ export class Player {
             console.log(`Игрок с id ${this.player_id} не может переместиться на 
                 координаты (${new_x}, ${new_y}) так как это выходит за границы 
                 карты, или же введённые значения не являются целыми числами.\n
-                Введите целое значение от 0 до 50 для каждой координаты.`);
+                Введите целое значение от 0 до ${this.config.mapBounds.maxX} для X и до ${this.config.mapBounds.maxY} для Y.`);
             return false;
         } else {
             this.x = new_x;
@@ -184,10 +184,17 @@ export class Player {
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
                 const isConsumed = currentItem.use(this, this.config);
                 if (isConsumed) {
-                    this.inventory[i] = null; // удаление той же аптечки
-                    console.log(`Предмет с id ${itemId} был израсходован и удален из инвентаря.`);
+                    if (currentItem.max_stack > 1) { // для стаковых
+                        currentItem.amount--;
+                        if (currentItem.amount <= 0) {
+                            this.inventory[i] = null;
+                         }
+                    } else {
+                        this.inventory[i] = null;
+                    }
+                    console.log(`Предмет с id ${itemId} успешно применен игроком с id ${this.player_id}`)
                 }
-                return true;
+                return isConsumed;
             }
         }
         console.log(`Действие не выполнено, так как предмет с id ${itemId} не найден в инвентаре у игрока с id ${this.player_id}`)
@@ -199,8 +206,8 @@ export class Player {
     // создать промежуточный класс Weapon, от него уже наследуется все оружие и тогда --> [1]
     public useWeapon(): boolean {
         if (this.slot_weapon instanceof BaseItem) {
-            this.slot_weapon.use(this, this.config);
-            return true;
+            const isUsed = this.slot_weapon.use(this, this.config);
+            return isUsed;
         } else {
             console.log(`Игрок с id ${this.player_id} пытается атаковать, но в руках нет оружия.`);
             return false;
@@ -208,29 +215,31 @@ export class Player {
     }
 
     // чтобы положить оружие в активный слот, и обратно
-    public equipWeapon(slotIndex: number): void {
+    public equipWeapon(slotIndex: number): boolean {
         const item = this.inventory[slotIndex];
         if (!(item instanceof Gun)) { // --> [1] вот тут проверять не на Gun а на Weapon
             console.log(`Игрок с id ${this.player_id} не может экипировать предмет с слота ${slotIndex}, так как он не является оружием.`);
-            return;
+            return false;
         }
         if (this.slot_weapon === null) {
             this.slot_weapon = item;
             this.inventory[slotIndex] = null;
             console.log(`Игрок с id ${this.player_id} экипировал оружие с id ${item.item_id}.`);
+            return true;
         } else {
             const temp = this.slot_weapon;
             this.slot_weapon = item;
             this.inventory[slotIndex] = temp;
             console.log(`Игрок с id ${this.player_id} заменил оружие в слоте на оружие с id ${item.item_id}. 
                 Оружие с id ${temp.item_id} был возвращён в слот инвентаря ${slotIndex}.`);
+            return true;
         }
     }
 
-    public unequipWeapon(): void {
+    public unequipWeapon(): boolean {
         if (this.slot_weapon === null) {
             console.log(`Игрок с id ${this.player_id} не может снять оружие, так как слот оружия пуст.`);
-            return;
+            return false;
         }
         for (let i = 0; i < this.inventory.length; i++) {
             if (this.inventory[i] === null) {
@@ -238,11 +247,12 @@ export class Player {
                 console.log(`Игрок с id ${this.player_id} снял оружие с id ${this.slot_weapon.item_id} 
                     и положил его в слот инвентаря ${i}.`);
                 this.slot_weapon = null;
-                return;
+                return true;
             }
         }
         console.log(`Игрок с id ${this.player_id} не может снять оружие c id ${this.slot_weapon.item_id}, 
             так как инвентарь полон.`);
+        return false;
     }
 
     // реализация перезарядки оружия уже в самом игроке
@@ -256,8 +266,8 @@ export class Player {
         for (let i = 0; i < this.inventory.length; i++) {
             const ammo_in_inventory = this.inventory[i];
             if (ammo_in_inventory instanceof Ammo) {
-                gun.reload(ammo_in_inventory);
-                if (ammo_in_inventory.isEmpty()) {
+                const ammoConsumed = gun.reload(ammo_in_inventory);
+                if (ammoConsumed) {
                     this.inventory[i] = null;
                     console.log(`Коробка с патронами с id ${ammo_in_inventory.item_id} была удалена из инвентаря, так как она пуста.`);
                 }
@@ -269,19 +279,35 @@ export class Player {
         return false;
     }
 
-    public toggleArmor(armorObj: Armor): void {
+    public toggleArmor(itemId: number): boolean {
+        //const armorObj = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
+        let armorObj: Armor | null = null;
+        if (this.slot_armor instanceof Armor && this.slot_armor.item_id === itemId) { // для поиска брони как в инвентаре так и в слоте брони
+            armorObj = this.slot_armor;
+        } else {
+            const found = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
+            if (found instanceof Armor) {
+                armorObj = found;
+            }
+        }
+        if (!(armorObj instanceof Armor)) {
+            console.log(
+                `Игрок ${this.player_id} не может использовать броню с id ${itemId}, так как она не найдена в инвентаре.`
+            );
+            return false;
+        }
         if (this.slot_armor === armorObj) { // если броня уже надета то снимаем
             const emptySlotIndex = this.inventory.findIndex(item => item === null);
             if (emptySlotIndex === -1) {
                 console.log(`Игрок с id ${this.player_id} не может снять броню, так как инвентарь полон. Сначала освободите место.`);
-                return;
+                return false;
             }
             this.inventory[emptySlotIndex] = armorObj;
             this.slot_armor = null;
             this.armor -= armorObj.current_armor;
             console.log(`Игрок снял броню с id ${armorObj.item_id} и положил её в слот инвентаря ${emptySlotIndex}. 
                 Текущая броня игрока: ${this.armor}`);
-            return;
+            return true;
         }
         const slotIndex = this.inventory.indexOf(armorObj);
         if (slotIndex !== -1) {
@@ -296,15 +322,18 @@ export class Player {
 
                 console.log(`Игрок заменил броню с id ${oldArmor.item_id} на броню с id ${armorObj.item_id}. 
                     Текущая броня игрока: ${this.armor}`);
+                return true;
             } else {
                 this.inventory[slotIndex] = null; // если слот активной брони был пуст 
                 this.slot_armor = armorObj;           
 
                 this.armor += armorObj.current_armor;
                 console.log(`Игрок экипировал броню с id ${armorObj.item_id}. Текущая броня игрока: ${this.armor}`);
+                return true;
             }
         } else {
-            console.log(`Ошибка: эта броня не найдена ни на игроке, ни в инвент аре.`);
+            console.log(`Ошибка: эта броня не найдена ни на игроке, ни в инвентаре.`);
+            return false;
         }
     }
 }
