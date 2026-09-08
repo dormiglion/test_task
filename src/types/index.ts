@@ -5,7 +5,7 @@ export interface Position { // пусть пока что карта будет 
 
 export interface PlayerState {
     readonly player_id: number
-    health: number; // надо потом проверять 0..100
+    health: number; // TODO: надо потом проверять 0..100
     armor: number; // аналогично 0..150
 
     slot_weapon: ItemState | null; // реализовать перекидывания оружия в этот слот и обратно в инвентарь
