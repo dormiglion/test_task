@@ -1,20 +1,19 @@
-import type { GameConfig, ItemState, GroundItemState } from "../types/index.js";
+import type { GameConfig, ItemState, GroundItemState, IInventoryStorage } from "../types/index.js";
 import { Player } from "../entities/Player.js";
-import type { InventoryStorage } from "../Storage/InventoryStorage.js";
-// import type { BaseItem } from "../items/BaseItem.js";
 import { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
+import '../items/index.js';
 
 
 
 export class GameWorld {
     public players: Map<number, Player>;
-    public storage: InventoryStorage;
+    public storage: IInventoryStorage;
     public config : GameConfig;
     private nextItemId: number = 1; // для выдачи предметам ID
     private currentTick = 0; //тики
 
-    constructor(storage: InventoryStorage, config: GameConfig) {
+    constructor(storage: IInventoryStorage, config: GameConfig) {
         this.storage = storage;
         this.config = config;
         this.players = new Map<number, Player>(); //передаетсмя не через конструктор
@@ -39,9 +38,9 @@ export class GameWorld {
 
     private async savePlayerInventory(player: Player): Promise<void> { // метод для сохранения в инвентарь
         await this.storage.saveInventory(player.player_id, {
-            inventory: player.inventory,
-            slot_weapon: player.slot_weapon,
-            slot_armor: player.slot_armor
+            inventory: player.inventory.map(item => item instanceof BaseItem ? item.getState() : null),
+            slot_weapon: player.slot_weapon instanceof BaseItem ? player.slot_weapon.getState() : null,
+            slot_armor: player.slot_armor instanceof BaseItem ? player.slot_armor.getState() : null
         });
     }
 
@@ -168,6 +167,7 @@ export class GameWorld {
             console.log(`Игрока с id ${player_id} в системе не существует`);
             return false;
         }
+        console.log(`Игрок с id ${player_id} пытается подобрать предмет с id ${ground_item_id}.`);
         const ground_item = await this.storage.getGroundItem(ground_item_id)
         if (!ground_item){
             console.log(`Игрок с id ${player_id} не может поднять предмет c id ${ground_item_id}, так как такого предмета не существует на земле.`);
@@ -180,7 +180,7 @@ export class GameWorld {
         }
         const itemData = await this.storage.removeFromGround(ground_item_id);
         if (!itemData) {
-            console.log(`Предмет ${ground_item_id} уже кто-то подобрал или он исчез.`);
+            console.log(`Игрок с id ${player_id} не смог подобрать предмет с id ${ground_item_id}, так как он уже кто-то подобрал или исчез.`);
             return false;
         }
         const itemInstance = createItemInstance(itemData);
@@ -204,15 +204,15 @@ export class GameWorld {
         return pickupResult.success;
     }
 
-    public async dropItem(player_id: number, item_id: number): Promise<boolean>{ // ПОПРАВИТЬ с тиками!!!!
+    public async dropItem(player_id: number, item_id: number): Promise<number | null>{ 
         const player = this.getPlayer(player_id);
         if (!player) {
             console.log(`Игрока с id ${player_id} в системе не существует`);
-            return false;
+            return null;
         }
         const droppedItemState = player.dropItem(item_id);
         if (!droppedItemState) {
-            return false; // инфа от игрока что нет предмета
+            return null; // инфа от игрока что нет предмета
         }
         const newGroundItemId = this.nextItemId++;
         droppedItemState.item_id = newGroundItemId;
@@ -227,7 +227,7 @@ export class GameWorld {
 
         await this.savePlayerInventory(player);
         console.log(`Игрок с id ${player_id} выбросил предмет ${droppedItemState.item_type} (новый id на земле: ${newGroundItemId}, кол-во: ${droppedItemState.amount}) на координаты (${player.x}, ${player.y}).`);
-        return true;
+        return newGroundItemId;
     }
 
     public async useItem(playerId: number, itemId: number): Promise<boolean> {

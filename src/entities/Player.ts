@@ -1,10 +1,8 @@
-import type {Position, PlayerState, ItemState, GroundItemState, GameConfig} from '../types/index.js'
+import type {Position, PlayerState, ItemState, GameConfig} from '../types/index.js'
 import { BaseItem } from '../items/BaseItem.js';
 import { Gun } from '../items/Gun.js';
 import { Ammo } from '../items/Ammo.js';
 import { Armor } from '../items/Armor.js';
-import { createItemInstance } from '../ItemFactory.js';
-import { InventoryStorage } from '../Storage/InventoryStorage.js';
 
 type PickUpResult = {
     success: boolean;
@@ -182,19 +180,17 @@ export class Player {
         for (let i = 0; i < this.inventory.length; i++){
             const currentItem = this.inventory[i];
             if (currentItem instanceof BaseItem && currentItem.item_id === itemId) {
-                const isConsumed = currentItem.use(this, this.config);
-                if (isConsumed) {
-                    if (currentItem.max_stack > 1) { // для стаковых
+                const isUsed = currentItem.use(this, this.config);
+                if (isUsed) {
+                    if (currentItem.consumable) { // для расходуемых
                         currentItem.amount--;
                         if (currentItem.amount <= 0) {
                             this.inventory[i] = null;
                          }
-                    } else {
-                        this.inventory[i] = null;
                     }
                     console.log(`Предмет с id ${itemId} успешно применен игроком с id ${this.player_id}`)
                 }
-                return isConsumed;
+                return isUsed;
             }
         }
         console.log(`Действие не выполнено, так как предмет с id ${itemId} не найден в инвентаре у игрока с id ${this.player_id}`)

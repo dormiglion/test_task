@@ -50,3 +50,18 @@ export interface GameConfig { // чтобы сделать все эти зна�
     
     validItemTypes: string[];
 }
+export interface StoredInventory {
+    inventory: (ItemState | null)[];
+    slot_weapon: ItemState | null;
+    slot_armor: ItemState | null;
+}
+// контракт хранилища ядро зависит от него
+export interface IInventoryStorage {
+    saveInventory(player_id: number, dataPlayerInventory: StoredInventory): Promise<void>;
+    getInventory(player_id: number): Promise<StoredInventory>;
+    deleteDataPlayersItem(player_id: number): Promise<boolean>;
+    addToGround(groundItemState: GroundItemState): Promise<void>;
+    removeFromGround(item_id: number): Promise<ItemState | null>;
+    getGroundItem(item_id: number): Promise<GroundItemState | null>;
+    getAllGroundItems(): Promise<GroundItemState[]>;
+}

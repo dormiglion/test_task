@@ -2,8 +2,10 @@
   "name": "test_task_inventory",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
+    "build": "tsc",
+    "start": "npm run build && node dist/main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

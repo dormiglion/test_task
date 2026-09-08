@@ -6,6 +6,7 @@ export abstract class BaseItem implements ItemState {
     public readonly item_type: string;
     public amount: number;
     public readonly max_stack: number = 1;
+    public readonly consumable: boolean = false;
 
     constructor(state: ItemState) {
         this.item_id = state.item_id;

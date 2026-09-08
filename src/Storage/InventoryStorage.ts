@@ -1,21 +1,26 @@
-import type { ItemState, GroundItemState } from '../types/index.js';
+import type { ItemState, GroundItemState, IInventoryStorage, 
+    StoredInventory } from '../types/index.js';
 
-export class InventoryStorage {
+export class InventoryStorage implements IInventoryStorage {
     // map, где id игрока ключ, а значение это данные про его вещиэ. private чтобы не менять из вне
-    private playerItemsMap = new Map<number, {
-        inventory: (ItemState | null)[];
-        slot_weapon: (ItemState | null);
-        slot_armor: (ItemState | null);
-    }>();
+    private playerItemsMap = new Map<number, StoredInventory>();
 
-    public async saveInventory(player_id: number, dataPlayerInventory: 
-        {inventory: (ItemState | null)[]; slot_weapon: (ItemState | null); slot_armor: (ItemState | null);}): Promise<void> {
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+    private readonly delayMs: number;
+    constructor(delayMs: number = 100) {
+        this.delayMs = delayMs;
+    }
+    // имитация задержки внешней БД
+    private async delay(): Promise<void> {
+        await new Promise(resolve => setTimeout(resolve, this.delayMs));
+    }
+
+    public async saveInventory(player_id: number, dataPlayerInventory: StoredInventory): Promise<void> {
+        await this.delay(); // имитация задержки БД
         this.playerItemsMap.set(player_id, dataPlayerInventory);
         console.log(`Инвентарь игрока с id ${player_id} успешно сохранён в БД`);
     }
     public async deleteDataPlayersItem(player_id: number): Promise<boolean> { // для удаления игрока насовсем, вызывается через ядро
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        await this.delay(); // имитация задержки БД
         if (!this.playerItemsMap.has(player_id)) {
         console.log(`В БД нет данных об игроке ${player_id}.`);
         return false;
@@ -25,12 +30,8 @@ export class InventoryStorage {
     return true;
     }
 
-    public async getInventory(player_id: number): Promise<{
-        inventory: (ItemState | null)[]; 
-        slot_weapon: (ItemState | null); 
-        slot_armor: (ItemState | null)
-    }> {
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+    public async getInventory(player_id: number): Promise<StoredInventory> {
+        await this.delay(); // имитация задержки БД
         const dataPlayerInventory = this.playerItemsMap.get(player_id);
         
         if (!dataPlayerInventory) {
@@ -49,13 +50,13 @@ export class InventoryStorage {
     private groundItemsMap = new Map<number, GroundItemState>();
 
     public async addToGround(groundItemState: GroundItemState): Promise<void> {
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        await this.delay(); // имитация задержки БД
         const item_id = groundItemState.itemCommon.item_id;
         this.groundItemsMap.set(item_id, groundItemState);
         console.log(`Предмет с id ${item_id} успешно добавлен в предметы, лежащие на земле`);
     }
     public async removeFromGround(item_id: number): Promise<ItemState | null> {
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        await this.delay(); // имитация задержки БД
         const groundItemState = this.groundItemsMap.get(item_id);
 
         if (!groundItemState) {
@@ -69,13 +70,13 @@ export class InventoryStorage {
     }
 
     public async getGroundItem(item_id: number): Promise<GroundItemState | null> { // чтобы посмотреть предмет на земле
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        await this.delay(); // имитация задержки БД
         const groundItemState = this.groundItemsMap.get(item_id);
         return groundItemState || null;
     }
 
     public async getAllGroundItems(): Promise<GroundItemState[]> { // чтобы посмотреть все предметы на земле
-        await new Promise(resolve => setTimeout(resolve, 100)); // имитация задержки БД
+        await this.delay(); // имитация задержки БД
         return Array.from(this.groundItemsMap.values())
     }
 

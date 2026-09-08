@@ -8,6 +8,7 @@ export class Medkit extends BaseItem {
     //     super(id, 'medkit', amount);
     // }
     public readonly max_stack: number = 5;
+    public readonly consumable: boolean = true;
 
     constructor(state: ItemState);
     constructor(id: number, amount?: number);
@@ -25,9 +26,8 @@ export class Medkit extends BaseItem {
 
     public use(player: Player, config: GameConfig): boolean {
         player.health += config.medkit_healing;
-        this.amount--
         console.log(`Игрок ${player.player_id} использовал аптечку. Здоровье: ${player.health}`)
-        return this.amount <= 0;    
+        return true;    
     }
     public getState(): ItemState { // Spread  синтаксис в JavaScript, который позволяет разобрать массив или объект на отдельные элементы.
         return {
