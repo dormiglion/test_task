@@ -53,19 +53,22 @@ export class Gun extends BaseItem {
         }
         return false; 
     }
+
+    public isFull(): boolean {
+        return this.current_ammo >= this.max_ammo;
+    }
+
     public reload(ammo: Ammo): boolean { // true патроны переложены
-        const needed_to_reload = this.max_ammo - this.current_ammo;
-        if (needed_to_reload <= 0) {
+        if (this.isFull()) {
             console.log(`Оружие с id ${this.item_id} уже заряжено полностью (${this.current_ammo}/${this.max_ammo}).`);
             return false;
         }
-        const take_from_ammo_box = Math.min(needed_to_reload, ammo.ammo_cnt);
-        if (take_from_ammo_box <= 0) {
+        const taken = ammo.take(this.max_ammo - this.current_ammo);
+        if (taken <= 0) {
             console.log(`Коробка с патронами с id ${ammo.item_id} пуста, перезарядка невозможна.`);
             return false;
         }
-        this.current_ammo += take_from_ammo_box;
-        ammo.ammo_cnt -= take_from_ammo_box;
+        this.current_ammo += taken;
         if (ammo.isEmpty()) {
             console.log(`Перезарядка сделана. В пистолете сейчас ${this.current_ammo} патронов. 
                 Коробка с патронами пуста и будет удалена из инвентаря`);

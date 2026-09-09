@@ -3,6 +3,7 @@ import { Player } from "../entities/Player.js";
 import { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
 import { getEffectHandler } from '../EffectRegistry.js';
+import { isPositionValid } from './GameConfig.js';
 import '../items/index.js';
 
 
@@ -85,6 +86,12 @@ export class GameWorld {
 
     // МЕТОДЫ
     public async addPlayer(player_id: number, start_x: number, start_y: number): Promise <Player | false> { // добавление игрока в активную игру
+        if (!isPositionValid(start_x, start_y, this.config)) {
+            console.log(`Игрока с id ${player_id} нельзя создать на координатах (${start_x}, ${start_y}): 
+                это вне карты или значения не целые.`);
+            return false;
+        }
+
         if (this.players.has(player_id)) { // проверка если такой id занят
             console.log(`Игрок с id ${player_id} уже существует. Сейчас будет выведен список всех занятых id. После этого повторите операцию`);
             const all_ids = Array.from(this.players.keys());
@@ -163,21 +170,24 @@ export class GameWorld {
             return false;
         }
 
-        const emptySlotIndex = player.inventory.findIndex(item => item === null);
-        if (emptySlotIndex === -1) {
-            console.log(`Игроку с id ${player_id} невозможно выдать предмет, так как его инвентарь полон`);
-            return false;
-        }
-        const itemId = this.nextItemId++;
         const newItem = createItemInstance({
-            item_id: itemId,
+            item_id: this.generateItemId(),
             item_type: item_type,
             amount: amount
         })
-        player.inventory[emptySlotIndex] = newItem;
+        const result = player.tryAddItem(newItem, () => this.generateItemId());
 
-        await this.savePlayerInventory(player); // для асинхронности. после добавления любого предмета надо сохранить инфу об этом
-        console.log(`Игроку с id ${player_id} успешно выдан предмет ${item_type} (id: ${itemId}, кол-во: ${amount})`);
+        if (!result.success) {
+            console.log(`Игроку с id ${player_id} невозможно выдать предмет ${item_type}, так как его инвентарь полон`);
+            return false;
+        }
+
+        await this.savePlayerInventory(player); // после добавления любого предмета надо сохранить инфу об этом
+        if (result.leftover) {
+            console.log(`Игроку с id ${player_id} выдано ${amount - result.leftover.amount} из ${amount} ${item_type}: инвентарь заполнился`);
+        } else {
+            console.log(`Игроку с id ${player_id} успешно выдан предмет ${item_type} (кол-во: ${amount})`);
+        }
         return true;
     }
 
@@ -205,17 +215,17 @@ export class GameWorld {
             return false;
         }
         const itemInstance = createItemInstance(itemData);
-        const pickupResult = player.tryAddItem(itemInstance);
+        const pickupResult = player.tryAddItem(itemInstance, () => this.generateItemId());
     
-        if (pickupResult.leftover) {
+        if (pickupResult.leftover) { 
             const leftoverState = pickupResult.leftover.getState();
-            leftoverState.item_id = this.nextItemId++; // у остатка новый id, тк исходный предмет уже удалён с земли
+            leftoverState.item_id = ground_item.itemCommon.item_id;; // у остатка старый id 
 
             const groundItemState: GroundItemState = {
-            creation_tick: this.currentTick,
-            duration_ticks: this.config.itemLifetimeTicks,
-            position: { x: player.x, y: player.y }, 
-            itemCommon: leftoverState
+                creation_tick: ground_item.creation_tick,
+                duration_ticks: ground_item.duration_ticks, //чтобы не юзать бесконечный подбор
+                position: ground_item.position, 
+                itemCommon: leftoverState
             };
             await this.storage.addToGround(groundItemState);
         }
