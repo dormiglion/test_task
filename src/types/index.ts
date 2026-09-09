@@ -22,7 +22,7 @@ export interface PlayerState {
         ItemState | null,
         ItemState | null
     ]
-    activeEffects: Record<string, { duration: number ; creattion_tick: number }>; // для лечения и ещё если придумаю
+    activeEffects: Record<string, { remaining_ticks: number }>; // имя и остсаток тиков
     // Constructs an object type whose property keys are Keys and whose property values are Type. 
     // This utility can be used to map the properties of a type to another type.
 }
@@ -44,6 +44,7 @@ export interface GameConfig { // чтобы сделать все эти зна�
     maxArmor: number;
     medkit_healing: number;
     bandage_healing: number;
+    bandage_duration_ticks: number;
     mapBounds: { maxX: number; maxY: number };
     pickupRadius: number; 
     itemLifetimeTicks: number;

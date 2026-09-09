@@ -40,6 +40,13 @@ export class Ammo extends BaseItem {
     public isEmpty(): boolean {
         return this.ammo_cnt <= 0;
     }
+    
+    // отдать не больше count патронов возвращает сколько отдано
+    public take(count: number): number {
+        const given = Math.min(count, this.ammo_cnt);
+        this.ammo_cnt -= given;
+        return given;
+    }
 
     public getState(): ItemState & { ammo_cnt: number } { 
         return {

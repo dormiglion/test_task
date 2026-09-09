@@ -2,6 +2,7 @@ import type { GameConfig, ItemState, GroundItemState, IInventoryStorage } from "
 import { Player } from "../entities/Player.js";
 import { BaseItem } from "../items/BaseItem.js";
 import { createItemInstance } from '../ItemFactory.js';
+import { getEffectHandler } from '../EffectRegistry.js';
 import '../items/index.js';
 
 
@@ -11,6 +12,9 @@ export class GameWorld {
     public storage: IInventoryStorage;
     public config : GameConfig;
     private nextItemId: number = 1; // для выдачи предметам ID
+    private generateItemId(): number {
+        return this.nextItemId++;
+    }
     private currentTick = 0; //тики
 
     constructor(storage: IInventoryStorage, config: GameConfig) {
@@ -49,6 +53,7 @@ export class GameWorld {
         console.log(`--- Тик ${this.currentTick} ---`);
         console.log(`Будут удалены предметы на замле с закончившимся временем жизни`)
         await this.removeExpiredGroundItems();
+        this.applyActiveEffects();
     }
 
     // для удаления по тику
@@ -58,6 +63,22 @@ export class GameWorld {
             if (this.currentTick >= item.creation_tick + item.duration_ticks){
                 await this.storage.removeFromGround(item.itemCommon.item_id);
                 console.log(`Предмет ${item.itemCommon.item_id} исчез с земли (истекло время жизни).`);
+            }
+        }
+    }
+    // эффект по времени
+    private applyActiveEffects(): void {
+        for (const player of this.players.values()) {
+            for (const [effectName, effect] of Object.entries(player.activeEffects)) { //метод возвращает массив собственных перечисляемых свойств
+                const handler = getEffectHandler(effectName);
+                if (handler) {
+                    handler(player, this.config);
+                }   
+                effect.remaining_ticks--;
+                if (effect.remaining_ticks <= 0) {
+                    delete player.activeEffects[effectName];
+                    console.log(`Эффект ${effectName} на игроке ${player.player_id} закончился.`);
+                }
             }
         }
     }

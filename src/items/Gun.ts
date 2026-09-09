@@ -53,9 +53,17 @@ export class Gun extends BaseItem {
         }
         return false; 
     }
-    public reload(ammo: Ammo): boolean {
+    public reload(ammo: Ammo): boolean { // true патроны переложены
         const needed_to_reload = this.max_ammo - this.current_ammo;
+        if (needed_to_reload <= 0) {
+            console.log(`Оружие с id ${this.item_id} уже заряжено полностью (${this.current_ammo}/${this.max_ammo}).`);
+            return false;
+        }
         const take_from_ammo_box = Math.min(needed_to_reload, ammo.ammo_cnt);
+        if (take_from_ammo_box <= 0) {
+            console.log(`Коробка с патронами с id ${ammo.item_id} пуста, перезарядка невозможна.`);
+            return false;
+        }
         this.current_ammo += take_from_ammo_box;
         ammo.ammo_cnt -= take_from_ammo_box;
         if (ammo.isEmpty()) {
@@ -65,7 +73,7 @@ export class Gun extends BaseItem {
             console.log(`Перезарядка сделана. В пистолете сейчас ${this.current_ammo} патронов. 
                 В коробке с патронами осталось ${ammo.ammo_cnt}`);
         }
-        return ammo.isEmpty();
+        return true;
     }
 
     public getState(): ItemState & { current_ammo : number, max_ammo: number } { 

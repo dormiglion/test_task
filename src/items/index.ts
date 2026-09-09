@@ -4,3 +4,4 @@ import './Medkit.js';
 import './Armor.js';
 import './Ammo.js';
 import './Gun.js';
+import './Bandage.js';

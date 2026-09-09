@@ -101,9 +101,34 @@ async function scenarioConcurrentPickup(): Promise<void> {
     console.log('>> Игрок 3 подобрал:', r3);
     console.log('>> Успешных подборов:', successCount, '(ожидается ровно 1)');
 }
-// await scenarioDropPickup();
-// await scenarioExpiry();
-// await scenarioUseItem();
+
+async function scenarioBandage(): Promise<void> {
+    header('Сценарий 5: бинт лечит понемногу несколько тиков подряд');
+    const world = new GameWorld(new InventoryStorage(), demoConfig);
+    const player = await world.addPlayer(1, 0, 0);
+    if (!player) return;
+    player.health = 75;
+
+    await world.giveItem(1, 'bandage', 1);
+    const bandage = world.getInventory(1).find(i => i?.item_type === 'bandage');
+    if (!bandage) {
+        throw new Error('Бинт не найден в инвентаре игрока 1');
+    }
+
+    console.log('>> Здоровье до бинта:', player.health);
+    console.log('>> Игрок применяет бинт:', await world.useItem(1, bandage.item_id));
+    console.log('>> Здоровье сразу после применения (лечения ещё не было):', player.health);
+
+    for (let i = 0; i < demoConfig.bandage_duration_ticks + 1; i++) {
+        await world.tick();
+        console.log(`>> Здоровье после тика ${i + 1}:`, player.health, '| эффекты:', JSON.stringify(player.activeEffects));
+    }
+}
+
+await scenarioDropPickup();
+await scenarioExpiry();
+await scenarioUseItem();
 await scenarioConcurrentPickup();
+await scenarioBandage();
 
 console.log('\nВсе сценарии завершены.');
