@@ -268,7 +268,6 @@ export class Player {
             console.log(`Игрок с id ${this.player_id} не может перезарядить оружие, так как слот оружия пуст`);
             return false;
         }
-
         let foundAmmo = false;
         let reloadedAnything = false;
 
@@ -279,12 +278,8 @@ export class Player {
             }
             foundAmmo = true;
 
-            if (gun.reload(ammo_in_inventory)) {
+            if (this.reloadWeaponWith(ammo_in_inventory)) {
                 reloadedAnything = true;
-            }
-            if (ammo_in_inventory.isEmpty()) {
-                this.inventory[i] = null;
-                console.log(`Коробка с патронами с id ${ammo_in_inventory.item_id} была удалена из инвентаря, так как она пуста.`);
             }
             if (gun.isFull()) {
                 break; // оружие заряжено, остальные коробки не трогаем
@@ -299,6 +294,26 @@ export class Player {
         return reloadedAnything;
     }
 
+    // перезарядить экипированное оружие из КОНКРЕТНОЙ коробки
+    // сюда приходит и Ammo.use, поэтому проверка оружия и уборка пустой коробки живут здесь
+    public reloadWeaponWith(ammo: Ammo): boolean {
+        const gun = this.slot_weapon;
+        if (!(gun instanceof Gun)) {
+            console.log(`Игрок с id ${this.player_id} не может использовать патроны, так как в руках нет оружия.`);
+            return false;
+        }
+        const reloaded = gun.reload(ammo);
+
+        if (ammo.isEmpty()) {
+            const slotIndex = this.inventory.indexOf(ammo);
+            if (slotIndex !== -1) {
+                this.inventory[slotIndex] = null;
+                console.log(`Коробка с патронами с id ${ammo.item_id} была удалена из инвентаря, так как она пуста.`);
+            }
+        }
+        return reloaded;
+    }
+    \
     public toggleArmor(itemId: number): boolean {
         //const armorObj = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
         let armorObj: Armor | null = null;

@@ -85,6 +85,19 @@ export class GameWorld {
     }
 
     // МЕТОДЫ
+    private restoreItem(itemData: ItemState | null | undefined): BaseItem | null {
+        if (!itemData) {
+            return null;
+        }
+        if (!isKnownItemType(itemData.item_type)) {
+            console.log(`Предмет с id ${itemData.item_id} пропущен при восстановлении: 
+                неизвестный тип "${itemData.item_type}".`);
+            return null;
+        }
+        return createItemInstance(itemData);
+    }
+
+
     public async addPlayer(player_id: number, start_x: number, start_y: number): Promise <Player | false> { // добавление игрока в активную игру
         if (!isPositionValid(start_x, start_y, this.config)) {
             console.log(`Игрока с id ${player_id} нельзя создать на координатах (${start_x}, ${start_y}): 
@@ -102,22 +115,13 @@ export class GameWorld {
             const savedData = await this.storage.getInventory(player_id);
             // восстановить инвентарь и вещи если вдруг у нас игрок выходил из активной игры
             for (let i = 0; i < player.inventory.length; i++) {
-                const itemData = savedData.inventory[i];
-                if (itemData) {
-                    player.inventory[i] = createItemInstance(itemData);
-                } else {
-                    player.inventory[i] = null;
-                }
+                player.inventory[i] = this.restoreItem(savedData.inventory[i]); 
             }
-            if (savedData.slot_weapon) {
-                player.slot_weapon = createItemInstance(savedData.slot_weapon);
-            } else { player.slot_weapon = null }
-            if (savedData.slot_armor) {
-                player.slot_armor = createItemInstance(savedData.slot_armor);
-            } else { player.slot_armor = null}
+            player.slot_weapon = this.restoreItem(savedData.slot_weapon);
+            player.slot_armor = this.restoreItem(savedData.slot_armor);
 
-                this.players.set(player_id, player);
-                return player;
+            this.players.set(player_id, player);
+            return player;
         }
     }
 
