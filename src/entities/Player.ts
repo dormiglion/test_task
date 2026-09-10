@@ -313,7 +313,7 @@ export class Player {
         }
         return reloaded;
     }
-    \
+    
     public toggleArmor(itemId: number): boolean {
         //const armorObj = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
         let armorObj: Armor | null = null;

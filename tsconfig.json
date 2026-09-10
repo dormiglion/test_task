@@ -10,11 +10,7 @@
     "module": "NodeNext", // чтобы у нас был ESM. в package.json нужно указать "type": "module", а не "commonjs"
     "moduleResolution": "NodeNext", // то же самое, изначально этой строчки не было
     "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    "types": ["node"], // нужны типы Node: node:test и node:assert в тестах
 
     // Other Outputs
     "sourceMap": true,
