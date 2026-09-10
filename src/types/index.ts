@@ -5,8 +5,8 @@ export interface Position { // пусть пока что карта будет 
 
 export interface PlayerState {
     readonly player_id: number
-    health: number; 
-    armor: number; 
+    health: number;
+    // защита не хранится: она считается по надетой броне в Player.armor
 
     slot_weapon: ItemState | null; // реализовать перекидывания оружия в этот слот и обратно в инвентарь
     slot_armor: ItemState | null; // надеть и снять

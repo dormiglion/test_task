@@ -22,7 +22,6 @@ export class Player {
         this.state = {
             player_id: player_id,
             health: this.config.maxHealth,
-            armor: 0,
             slot_weapon: null,
             slot_armor: null,
             inventory: [null, null, null, null, null, null, null, null],
@@ -55,11 +54,13 @@ export class Player {
     set health(value: number) {
         this.state.health = Math.min(this.config.maxHealth, Math.max(0, value));
     }
+    // защита не хранится отдельно, а считается по надетой броне.
+    // раньше это же число лежало ещё и в state.armor — две копии расходились
     get armor(): number {
-        return this.state.armor;
-    }
-    set armor(value: number) {
-        this.state.armor = Math.min(this.config.maxArmor, Math.max(0, value));
+        if (!(this.slot_armor instanceof Armor)) {
+            return 0;
+        }
+        return Math.min(this.config.maxArmor, this.slot_armor.current_armor);
     }
     // для слотов брони и оружия 
     get slot_weapon(): ItemState | null {
@@ -314,61 +315,48 @@ export class Player {
         return reloaded;
     }
     
-    public toggleArmor(itemId: number): boolean {
-        //const armorObj = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
-        let armorObj: Armor | null = null;
-        if (this.slot_armor instanceof Armor && this.slot_armor.item_id === itemId) { // для поиска брони как в инвентаре так и в слоте брони
-            armorObj = this.slot_armor;
-        } else {
-            const found = this.inventory.find(item => item instanceof Armor && item.item_id === itemId);
-            if (found instanceof Armor) {
-                armorObj = found;
-            }
+    // надеть броню из инвентаря; если броня уже надета — меняем местами
+    public equipArmor(itemId: number): boolean {
+        const slotIndex = this.inventory.findIndex(item => item instanceof Armor && item.item_id === itemId);
+        if (slotIndex === -1) {
+            console.log(`Игрок ${this.player_id} не может надеть броню с id ${itemId}, так как она не найдена в инвентаре.`);
+            return false;
         }
+        const armorObj = this.inventory[slotIndex];
         if (!(armorObj instanceof Armor)) {
-            console.log(
-                `Игрок ${this.player_id} не может использовать броню с id ${itemId}, так как она не найдена в инвентаре.`
-            );
             return false;
         }
-        if (this.slot_armor === armorObj) { // если броня уже надета то снимаем
-            const emptySlotIndex = this.inventory.findIndex(item => item === null);
-            if (emptySlotIndex === -1) {
-                console.log(`Игрок с id ${this.player_id} не может снять броню, так как инвентарь полон. Сначала освободите место.`);
-                return false;
-            }
-            this.inventory[emptySlotIndex] = armorObj;
-            this.slot_armor = null;
-            this.armor -= armorObj.current_armor;
-            console.log(`Игрок снял броню с id ${armorObj.item_id} и положил её в слот инвентаря ${emptySlotIndex}. 
-                Текущая броня игрока: ${this.armor}`);
-            return true;
-        }
-        const slotIndex = this.inventory.indexOf(armorObj);
-        if (slotIndex !== -1) {
-            const oldArmor = this.slot_armor;
 
-            if (oldArmor instanceof Armor) {
-                this.inventory[slotIndex] = oldArmor;
-                this.slot_armor = armorObj;
+        const previousArmor = this.slot_armor;
+        this.slot_armor = armorObj;
+        this.inventory[slotIndex] = previousArmor;
 
-                this.armor -= oldArmor.current_armor;
-                this.armor += armorObj.current_armor;
-
-                console.log(`Игрок заменил броню с id ${oldArmor.item_id} на броню с id ${armorObj.item_id}. 
-                    Текущая броня игрока: ${this.armor}`);
-                return true;
-            } else {
-                this.inventory[slotIndex] = null; // если слот активной брони был пуст 
-                this.slot_armor = armorObj;           
-
-                this.armor += armorObj.current_armor;
-                console.log(`Игрок экипировал броню с id ${armorObj.item_id}. Текущая броня игрока: ${this.armor}`);
-                return true;
-            }
+        if (previousArmor === null) {
+            console.log(`Игрок экипировал броню с id ${armorObj.item_id}. Текущая броня игрока: ${this.armor}`);
         } else {
-            console.log(`Ошибка: эта броня не найдена ни на игроке, ни в инвентаре.`);
+            console.log(`Игрок заменил броню с id ${previousArmor.item_id} на броню с id ${armorObj.item_id}.
+                Текущая броня игрока: ${this.armor}`);
+        }
+        return true;
+    }
+
+    // снять надетую броню и убрать её в инвентарь
+    public unequipArmor(): boolean {
+        const armorObj = this.slot_armor;
+        if (armorObj === null) {
+            console.log(`Игрок с id ${this.player_id} не может снять броню, так как слот брони пуст.`);
             return false;
         }
+        const emptySlotIndex = this.inventory.findIndex(item => item === null);
+        if (emptySlotIndex === -1) {
+            console.log(`Игрок с id ${this.player_id} не может снять броню, так как инвентарь полон. Сначала освободите место.`);
+            return false;
+        }
+
+        this.inventory[emptySlotIndex] = armorObj;
+        this.slot_armor = null;
+        console.log(`Игрок снял броню с id ${armorObj.item_id} и положил её в слот инвентаря ${emptySlotIndex}.
+            Текущая броня игрока: ${this.armor}`);
+        return true;
     }
 }

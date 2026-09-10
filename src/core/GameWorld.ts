@@ -338,6 +338,22 @@ export class GameWorld {
         return success;
     }
 
+    public async unequipArmor(playerId: number): Promise<boolean> { // снять броню и убрать в инвентарь
+        const player = this.getPlayer(playerId);
+        if (!player) {
+            console.log(`Игрока с id ${playerId} в системе не существует`);
+            return false;
+        }
+
+        const success = player.unequipArmor();
+
+        if (success) {
+            await this.savePlayerInventory(player);
+        }
+
+        return success;
+    }
+
 
 
 
