@@ -22,3 +22,12 @@ export function createItemInstance(state: ItemState): BaseItem {
     // Создаем экземпляр нужного класса через сохраненный конструктор
     return new ItemClass(state);
 }
+
+// какие типы предметов зарегистрированы ssot
+export function isKnownItemType(itemType: string): boolean {
+    return itemRegistry.has(itemType);
+}
+
+export function getKnownItemTypes(): string[] {
+    return Array.from(itemRegistry.keys());
+}

@@ -5,8 +5,8 @@ export interface Position { // пусть пока что карта будет 
 
 export interface PlayerState {
     readonly player_id: number
-    health: number; // TODO: надо потом проверять 0..100
-    armor: number; // аналогично 0..150
+    health: number; 
+    armor: number; 
 
     slot_weapon: ItemState | null; // реализовать перекидывания оружия в этот слот и обратно в инвентарь
     slot_armor: ItemState | null; // надеть и снять
@@ -48,8 +48,6 @@ export interface GameConfig { // чтобы сделать все эти зна�
     mapBounds: { maxX: number; maxY: number };
     pickupRadius: number; 
     itemLifetimeTicks: number;
-    
-    validItemTypes: string[];
 }
 export interface StoredInventory {
     inventory: (ItemState | null)[];

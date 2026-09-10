@@ -8,15 +8,7 @@ export const defaultConfig: GameConfig = {
     bandage_duration_ticks: 3,
     mapBounds: { maxX: 50, maxY: 50 },
     pickupRadius: 2,
-    itemLifetimeTicks: 10,
-    validItemTypes: [
-        'ammo', 
-        'armor',
-        'gun',
-        'medkit',
-        'bandage',
-        // 'new'
-    ]
+    itemLifetimeTicks: 10
 };
 
 // единая проверка координат

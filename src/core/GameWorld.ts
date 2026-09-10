@@ -1,7 +1,7 @@
 import type { GameConfig, ItemState, GroundItemState, IInventoryStorage } from "../types/index.js";
 import { Player } from "../entities/Player.js";
 import { BaseItem } from "../items/BaseItem.js";
-import { createItemInstance } from '../ItemFactory.js';
+import { createItemInstance, isKnownItemType, getKnownItemTypes } from '../ItemFactory.js';
 import { getEffectHandler } from '../EffectRegistry.js';
 import { isPositionValid } from './GameConfig.js';
 import '../items/index.js';
@@ -101,7 +101,7 @@ export class GameWorld {
             const player = new Player(player_id, start_x, start_y, this.config);
             const savedData = await this.storage.getInventory(player_id);
             // восстановить инвентарь и вещи если вдруг у нас игрок выходил из активной игры
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < player.inventory.length; i++) {
                 const itemData = savedData.inventory[i];
                 if (itemData) {
                     player.inventory[i] = createItemInstance(itemData);
@@ -165,8 +165,8 @@ export class GameWorld {
             return false;
         }
 
-        if (!this.config.validItemTypes.includes(item_type)) {
-            console.log(`Неизвестный тип предмета: ${item_type}`);
+        if (!isKnownItemType(item_type)) {
+            console.log(`Неизвестный тип предмета: ${item_type}. Доступные типы: ${getKnownItemTypes().join(', ')}`);
             return false;
         }
 
@@ -304,13 +304,13 @@ export class GameWorld {
         return success;
     }
 
-    public async equipWeapon(playerId: number, slotIndex: number): Promise<boolean> { // переложить оружие в активный слот
+    public async equipWeapon(playerId: number, ItemId: number): Promise<boolean> { // переложить оружие в активный слот
         const player = this.getPlayer(playerId);
         if (!player) {
             console.log(`Игрока с id ${playerId} в системе не существует`);
             return false;
         }
-        const success = player.equipWeapon(slotIndex);
+        const success = player.equipWeapon(ItemId);
 
         if (success) {
             await this.savePlayerInventory(player);

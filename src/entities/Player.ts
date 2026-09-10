@@ -219,25 +219,27 @@ export class Player {
     }
 
     // чтобы положить оружие в активный слот, и обратно
-    public equipWeapon(slotIndex: number): boolean {
-        const item = this.inventory[slotIndex];
-        if (!(item instanceof Gun)) { // --> [1] вот тут проверять не на Gun а на Weapon
-            console.log(`Игрок с id ${this.player_id} не может экипировать предмет с слота ${slotIndex}, так как он не является оружием.`);
-            return false;
-        }
-        if (this.slot_weapon === null) {
+    public equipWeapon(itemId: number): boolean {
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (!(item instanceof Gun) || item.item_id !== itemId) { // --> вот тут проверять не на Gun а на Weapon
+                continue;
+            }
+            const previousWeapon = this.slot_weapon;
             this.slot_weapon = item;
-            this.inventory[slotIndex] = null;
-            console.log(`Игрок с id ${this.player_id} экипировал оружие с id ${item.item_id}.`);
-            return true;
-        } else {
-            const temp = this.slot_weapon;
-            this.slot_weapon = item;
-            this.inventory[slotIndex] = temp;
-            console.log(`Игрок с id ${this.player_id} заменил оружие в слоте на оружие с id ${item.item_id}. 
-                Оружие с id ${temp.item_id} был возвращён в слот инвентаря ${slotIndex}.`);
+            this.inventory[i] = previousWeapon;
+
+            if (previousWeapon === null) {
+                console.log(`Игрок с id ${this.player_id} экипировал оружие с id ${item.item_id}.`);
+            } else {
+                console.log(`Игрок с id ${this.player_id} заменил оружие в слоте на оружие с id ${item.item_id}. 
+                    Оружие с id ${previousWeapon.item_id} было возвращено в слот инвентаря ${i}.`);
+            }
             return true;
         }
+        console.log(`Игрок с id ${this.player_id} не может экипировать предмет с id ${itemId}: 
+            он не найден в инвентаре или не является оружием.`);
+        return false;
     }
 
     public unequipWeapon(): boolean {
