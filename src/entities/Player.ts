@@ -315,7 +315,7 @@ export class Player {
         return reloaded;
     }
     
-    // надеть броню из инвентаря; если броня уже надета — меняем местами
+    // надеть броню из инвентаря, если броня уже надета — меняем местами
     public equipArmor(itemId: number): boolean {
         const slotIndex = this.inventory.findIndex(item => item instanceof Armor && item.item_id === itemId);
         if (slotIndex === -1) {

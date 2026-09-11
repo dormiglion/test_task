@@ -9,9 +9,9 @@ import '../items/index.js';
 
 
 export class GameWorld {
-    public players: Map<number, Player>;
-    public storage: IInventoryStorage;
-    public config : GameConfig;
+    private readonly players: Map<number, Player>;
+    private readonly storage: IInventoryStorage;
+    private readonly config: GameConfig;
     private nextItemId: number = 1; // для выдачи предметам ID
     private generateItemId(): number {
         return this.nextItemId++;
@@ -24,11 +24,11 @@ export class GameWorld {
         this.players = new Map<number, Player>(); //передаетсмя не через конструктор
     }
     //геттер
-    public getPlayer(player_id: number): Player | undefined {
+    public getPlayer(player_id: number): Player | null {
         const player = this.players.get(player_id);
         if (!player) {
             console.log(`Игрока с id ${player_id} в системе не существует`);
-            return undefined
+            return null;
         }
         return player;
     }
@@ -39,6 +39,17 @@ export class GameWorld {
             return [];
         }
         return player.inventory.map(item => item instanceof BaseItem ? item.getState() : null); // true false
+    }
+
+    // наружу уходят копии, чтобы не менять по ссылкам обхъекты в хранилище
+    public async getGroundItems(): Promise<GroundItemState[]> {
+        const groundItems = await this.storage.getAllGroundItems();
+        return groundItems.map(item => ({
+            itemCommon: { ...item.itemCommon },
+            creation_tick: item.creation_tick,
+            duration_ticks: item.duration_ticks,
+            position: { ...item.position }
+        }));
     }
 
     private async savePlayerInventory(player: Player): Promise<void> { // метод для сохранения в инвентарь
@@ -98,18 +109,18 @@ export class GameWorld {
     }
 
 
-    public async addPlayer(player_id: number, start_x: number, start_y: number): Promise <Player | false> { // добавление игрока в активную игру
+    public async addPlayer(player_id: number, start_x: number, start_y: number): Promise<Player | null> { // добавление игрока в активную игру
         if (!isPositionValid(start_x, start_y, this.config)) {
-            console.log(`Игрока с id ${player_id} нельзя создать на координатах (${start_x}, ${start_y}): 
+            console.log(`Игрока с id ${player_id} нельзя создать на координатах (${start_x}, ${start_y}):
                 это вне карты или значения не целые.`);
-            return false;
+            return null;
         }
 
         if (this.players.has(player_id)) { // проверка если такой id занят
             console.log(`Игрок с id ${player_id} уже существует. Сейчас будет выведен список всех занятых id. После этого повторите операцию`);
             const all_ids = Array.from(this.players.keys());
             console.log(`Занятые id: ${all_ids}`)
-            return false;
+            return null;
         } else {
             const player = new Player(player_id, start_x, start_y, this.config);
             const savedData = await this.storage.getInventory(player_id);

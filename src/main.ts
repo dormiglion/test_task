@@ -1,6 +1,7 @@
 import { GameWorld } from './core/GameWorld.js';
 import { InventoryStorage } from './Storage/InventoryStorage.js';
 import { defaultConfig } from './core/GameConfig.js';
+import { Gun } from './items/Gun.js';
 import type { GameConfig } from './types/index.js';
 
 // конфиг для тестов
@@ -44,13 +45,13 @@ async function scenarioExpiry(): Promise<void> {
     }
 
     const groundId = await world.dropItem(1, gun.item_id);
-    console.log('>> На земле до тиков:', await world.storage.getAllGroundItems());
-    
+    console.log('>> На земле до тиков:', await world.getGroundItems());
+        
     for (let i = 0; i < demoConfig.itemLifetimeTicks; i++) {
         console.log(`>> Тик ${i + 1}`);
         await world.tick();
     }
-    console.log('>> Проверка предметов на земле:', await world.storage.getAllGroundItems());
+    console.log('>> Проверка предметов на земле:', await world.getGroundItems());
     console.log('>> Попытка подобрать истёкший предмет:', await world.pickUpItem(1, groundId!)); 
 }
 async function scenarioUseItem(): Promise<void> {
@@ -125,10 +126,49 @@ async function scenarioBandage(): Promise<void> {
     }
 }
 
+async function scenarioWeapon(): Promise<void> {
+    header('Сценарий 6: оружие — экипировка, патроны, перезарядка и выстрел');
+    const world = new GameWorld(new InventoryStorage(), demoConfig);
+    const player = await world.addPlayer(1, 0, 0);
+    if (!player) return;
+
+    // сколько патронов в экипированном оружии
+    const ammoInGun = (): string => {
+        const equipped = world.getPlayer(1)?.slot_weapon;
+        return equipped instanceof Gun
+            ? `${equipped.current_ammo}/${equipped.max_ammo}`
+            : 'оружие не экипировано';
+    };
+
+    await world.giveItem(1, 'gun', 1);
+    await world.giveItem(1, 'ammo', 1);
+    const gun = world.getInventory(1).find(i => i?.item_type === 'gun');
+    const ammo = world.getInventory(1).find(i => i?.item_type === 'ammo');
+    if (!gun || !ammo) {
+        throw new Error('Оружие или патроны не найдены в инвентаре игрока 1');
+    }
+
+    console.log('>> Попытка выстрелить, пока оружие лежит в рюкзаке:', await world.useItem(1, gun.item_id));
+    console.log('>> Игрок экипирует оружие:', await world.equipWeapon(1, gun.item_id));
+    console.log('>> Патронов в оружии:', ammoInGun());
+    console.log('>> Выстрел без патронов:', await world.useWeapon(1));
+
+    console.log('>> Игрок применяет коробку с патронами:', await world.useItem(1, ammo.item_id));
+    console.log('>> Патронов в оружии:', ammoInGun());
+
+    console.log('>> Выстрел:', await world.useWeapon(1));
+    console.log('>> Патронов в оружии:', ammoInGun());
+
+    console.log('>> Перезарядка, когда патронов в инвентаре не осталось:', await world.reloadWeapon(1));
+    console.log('>> Игрок убирает оружие в рюкзак:', await world.unequipWeapon(1));
+    console.log('>> Инвентарь игрока:', world.getInventory(1).filter(i => i !== null));
+}
+
 await scenarioDropPickup();
 await scenarioExpiry();
 await scenarioUseItem();
 await scenarioConcurrentPickup();
 await scenarioBandage();
+await scenarioWeapon();
 
 console.log('\nВсе сценарии завершены.');
