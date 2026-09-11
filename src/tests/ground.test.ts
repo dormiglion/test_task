@@ -53,8 +53,11 @@ test('после неудачного подбора предмет остаёт
     }
     assert.equal(await world.pickUpItem(2, groundId), false, 'в полный инвентарь не влезет');
 
+    const [onGround] = await world.getGroundItems();
+    assert.ok(onGround, 'предмет должен остаться лежать на земле');
+    assert.equal(onGround.itemCommon.item_id, groundId, 'id не должен смениться');
     assert.equal(await world.pickUpItem(1, groundId), true,
-        'тот же самый id должен по-прежнему работать');
+        'и тот же самый id должен по-прежнему работать');
 });
 
 test('неудачный подбор не продлевает предмету время жизни', async () => {
@@ -76,18 +79,22 @@ test('неудачный подбор не продлевает предмету
     await world.tick();
     assert.equal(await world.pickUpItem(2, groundId), false, 'предусловие: подбор сорвался');
 
+    const [onGround] = await world.getGroundItems();
+    assert.ok(onGround);
+    assert.equal(onGround.creation_tick, 0, 'таймер должен остаться от исходного выброса');
+
     await world.tick(); // третий тик — предмет обязан истечь по исходному таймеру
+    assert.equal((await world.getGroundItems()).length, 0, 'предмет должен исчезнуть с земли');
     assert.equal(await world.pickUpItem(1, groundId), false,
-        'таймер должен считаться от исходного выброса, а не от неудачной попытки');
+        'и подобрать его уже нельзя');
 });
 
 test('неудачный подбор не перетаскивает предмет к тому, кто его не поднял', async () => {
     // ловит: остаток кладётся на землю по координатам подбиравшего —
     // предмет телепортируется к игроку, который его даже не взял
-    const world = createTestWorld({ pickupRadius: 1 });
-    await world.addPlayer(1, 0, 0); // выбрасывает здесь
-    await world.addPlayer(2, 1, 0); // пытается поднять, инвентарь полон
-    await world.addPlayer(3, 2, 0); // до (0,0) не дотягивается, до (1,0) — дотянулся бы
+    const world = createTestWorld();
+    await world.addPlayer(1, 4, 6); // выбрасывает здесь
+    await world.addPlayer(2, 5, 6); // пытается поднять, инвентарь полон
     await world.giveItem(1, 'medkit', 1);
     const groundId = await world.dropItem(1, findInInventory(world, 1, 'medkit').item_id);
     assert.ok(groundId);
@@ -97,8 +104,10 @@ test('неудачный подбор не перетаскивает предм
     }
     assert.equal(await world.pickUpItem(2, groundId), false, 'предусловие: подбор сорвался');
 
-    assert.equal(await world.pickUpItem(3, groundId), false,
-        'предмет должен остаться на (0,0), а не переехать к игроку 2');
+    const [onGround] = await world.getGroundItems();
+    assert.ok(onGround);
+    assert.deepEqual(onGround.position, { x: 4, y: 6 },
+        'предмет должен остаться там, где его выбросили');
 });
 
 // ─────────────────────────── подбор в стак ───────────────────────────
@@ -137,7 +146,8 @@ test('за тик до истечения предмет ещё лежит на 
         await world.tick();
     }
 
-    assert.equal(await world.pickUpItem(1, groundId), true, 'предмет должен быть ещё жив');
+    assert.equal((await world.getGroundItems()).length, 1, 'предмет должен быть ещё на земле');
+    assert.equal(await world.pickUpItem(1, groundId), true, 'и его можно подобрать');
 });
 
 test('на тике исчезает только просроченный предмет, свежий остаётся', async () => {
@@ -158,6 +168,9 @@ test('на тике исчезает только просроченный пр�
 
     await world.tick(); // старому предмету пришло время, свежему — нет
 
+    const onGround = await world.getGroundItems();
+    assert.equal(onGround.length, 1, 'на земле должен остаться ровно один предмет');
+    assert.equal(onGround[0]?.itemCommon.item_id, freshId, 'и это должен быть свежий');
     assert.equal(await world.pickUpItem(1, oldId), false, 'старый предмет должен исчезнуть');
     assert.equal(await world.pickUpItem(1, freshId), true, 'свежий должен остаться');
 });

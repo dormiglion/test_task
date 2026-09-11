@@ -30,7 +30,7 @@ test('addPlayer с занятым id отказывает и не затирае
     await world.addPlayer(1, 5, 5);
     await world.giveItem(1, 'medkit', 1);
 
-    assert.equal(await world.addPlayer(1, 40, 40), false, 'вход под занятым id должен вернуть false');
+    assert.equal(await world.addPlayer(1, 40, 40), null, 'вход под занятым id должен вернуть null');
 
     const player = world.getPlayer(1);
     assert.ok(player);
@@ -42,17 +42,17 @@ test('addPlayer отказывает на координатах вне карт
     // ловит: игрок появляется за границей карты, хотя moveTo такие координаты запрещает —
     // одно и то же правило должно действовать на обоих входах
     const world = createTestWorld();
-    assert.equal(await world.addPlayer(1, 999, 10), false, 'x за границей карты');
-    assert.equal(await world.addPlayer(2, 10, -1), false, 'отрицательный y');
-    assert.equal(world.getPlayer(1), undefined, 'отвергнутый игрок не должен попасть в мир');
+    assert.equal(await world.addPlayer(1, 999, 10), null, 'x за границей карты');
+    assert.equal(await world.addPlayer(2, 10, -1), null, 'отрицательный y');
+    assert.equal(world.getPlayer(1), null, 'отвергнутый игрок не должен попасть в мир');
 });
 
 test('addPlayer отказывает на дробных координатах', async () => {
     // ловит: позиция перестаёт быть целочисленной, и расчёт расстояния
     // до предметов начинает вести себя не так, как задумано
     const world = createTestWorld();
-    assert.equal(await world.addPlayer(1, 10.5, 10), false);
-    assert.equal(world.getPlayer(1), undefined);
+    assert.equal(await world.addPlayer(1, 10.5, 10), null);
+    assert.equal(world.getPlayer(1), null);
 });
 
 test('новый игрок появляется с полным здоровьем и пустым инвентарём', async () => {
@@ -70,11 +70,11 @@ test('новый игрок появляется с полным здоровь�
 
 // ─────────────────────────── getPlayer / getInventory ───────────────────────────
 
-test('getPlayer на несуществующем игроке возвращает undefined', async () => {
+test('getPlayer на несуществующем игроке возвращает null', async () => {
     // ловит: вместо «нет такого» метод отдаёт мусор, и вызывающий код
     // идёт дальше с пустышкой вместо того, чтобы остановиться
     const world = createTestWorld();
-    assert.equal(world.getPlayer(42), undefined);
+    assert.equal(world.getPlayer(42), null);
 });
 
 test('getInventory на несуществующем игроке возвращает пустой массив', async () => {
@@ -159,7 +159,7 @@ test('removePlayer убирает игрока с сервера, но вещи 
     await first.giveItem(1, 'medkit', 1);
 
     assert.equal(first.removePlayer(1), true);
-    assert.equal(first.getPlayer(1), undefined, 'после выхода игрока нет на сервере');
+    assert.equal(first.getPlayer(1), null, 'после выхода игрока нет на сервере');
 
     const second = createTestWorld({}, storage);
     await second.addPlayer(1, 0, 0);

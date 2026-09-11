@@ -35,10 +35,13 @@ test('ТЗ: предмет исчезает с земли по истечени�
     const groundId = await world.dropItem(1, findInInventory(world, 1, 'medkit').item_id);
     assert.ok(groundId);
 
+    assert.equal((await world.getGroundItems()).length, 1, 'предмет лежит на земле');
+
     for (let i = 0; i < lifetime; i++) {
         await world.tick();
     }
 
+    assert.equal((await world.getGroundItems()).length, 0, 'земля опустела по истечении времени');
     assert.equal(await world.pickUpItem(1, groundId), false, 'истёкший предмет подобрать нельзя');
 });
 
